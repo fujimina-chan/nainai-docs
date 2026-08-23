@@ -81,6 +81,10 @@ nainai-backend … MVP では未使用
 3. インフラ・配布に関わる変更 → **nainai-infra** で作業
 4. サーバー機能が必要になった場合 → **nainai-backend** で作業（将来）
 
+### Windows 上の配置
+
+Windows での Flutter 開発では、リポジトリを ASCII 実パスへ配置する（ジャンクションは正式手順にしない）。詳細は [development-environment.md](development-environment.md) を参照してください。
+
 ## 未確定事項
 
 - 各リポジトリのブランチ戦略
