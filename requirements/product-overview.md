@@ -4,6 +4,8 @@
 
 nainai は、ユーザーが端末内に保存されている音声・動画ファイルを選択し、アプリ内で再生・編集・管理するための Flutter アプリケーションです。
 
+正式名称は **nainai** とする。「nainai Media Player」を製品正式名称として使用しない。将来の Player / Editor / Timeline / Playlist / Equalizer / Compressor 等への拡張を前提とし、アプリ全体を Media Player に限定しない。
+
 各 OS 上で許可された保存先へファイルを書き出すことも将来の機能として想定しています（Web ブラウザの「ダウンロード」方式ではありません）。
 
 ## プラットフォームロードマップ
@@ -67,7 +69,10 @@ Android と iOS で同じ識別子体系（`com.fyna.nainai`）を使用しま�
 
 | 機能 | 概要 |
 |------|------|
-| タイムライン | 再生位置や区間を視覚的に扱う |
+| Editor / Timeline | 編集 Mode・再生位置や区間を視覚的に扱う |
+| Playlist / Folder Playback | 複数メディアの管理・フォルダ再生 |
+| Equalizer / Compressor | 音声処理 |
+| Repeat ALL | 複数トラック等の繰り返し（Phase 2 は OFF / ONE のみ） |
 | 区間指定 | ファイル内の特定区間を指定する |
 | 分割 | ファイルを複数の区間・セグメントに分ける |
 | 歌詞 | 分割データごとに歌詞を関連付ける |
@@ -76,6 +81,8 @@ Android と iOS で同じ識別子体系（`com.fyna.nainai`）を使用しま�
 | メタデータ | ファイルや分割データに付随する情報を管理する |
 | 出力 | 編集結果をファイルとして書き出す |
 | 出力先設定 | ファイル種別ごとに出力先を指定する |
+| テーマ選択 | Base Palette / Accent の独立選択（Architecture は先行定義） |
+| 問題報告 | Unknown Error からの報告（Phase 2 では未実装） |
 
 ## 設計方針
 
@@ -89,13 +96,22 @@ Android と iOS で同じ識別子体系（`com.fyna.nainai`）を使用しま�
 - 初期 MVP では端末内のファイル操作とアプリ内再生に限定します。
 - クラウド同期、ログイン、バックエンド通信は MVP の対象外です。
 
+## UI / Design System（Phase 2）
+
+Phase 2 の再生 UI 大枠と Design System は次を正とする。
+
+- [phase2-ui.md](../design/phase2-ui.md)
+- [design-system.md](../design/design-system.md)
+- [media-playback.md](../design/media-playback.md)
+
+Design Persona は **Professional Creative Media Tool**。Theme は Base / Accent / Semantic を分離する。
+
 ## 未確定事項
 
 以下は現時点で確定していません。
 
 - 対応する音声・動画フォーマットの一覧
 - 出力先選択ライブラリ / API・ファイル書き出し方式
-- UI/UX の詳細
 - 分割・歌詞・字幕・説明のデータモデル
 - 字幕形式
 - 出力ファイルの形式と保存先の指定方法
@@ -103,5 +119,6 @@ Android と iOS で同じ識別子体系（`com.fyna.nainai`）を使用しま�
 - 状態管理ライブラリ / ルーティングライブラリ
 - backend 技術 / API / DB / 認証 / クラウド同期
 - 各プラットフォーム間でのデータ共有方法
+- フォントの Flutter 導入方法・Accent 詳細 Token
 
 入力ファイル選択・再生の技術選定は [media-technology.md](../architecture/media-technology.md) を参照。

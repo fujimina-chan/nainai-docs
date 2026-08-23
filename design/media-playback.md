@@ -1,12 +1,14 @@
 # メディア再生（機能設計）
 
-初期 MVP における、選択済み音声・動画ファイルのアプリ内再生機能を定義します。
+初期 MVP / Phase 2 における、選択済み音声・動画ファイルのアプリ内再生機能を定義します。
 
-本ドキュメントは主に **何を実現するか** を定めます。採用技術の詳細は [media-technology.md](../architecture/media-technology.md) を参照してください。
+本ドキュメントは主に **何を実現するか** を定めます。UI レイアウトは [phase2-ui.md](phase2-ui.md)、視覚ルールは [design-system.md](design-system.md)、採用技術は [media-technology.md](../architecture/media-technology.md) を参照してください。
 
 関連:
 
 - [MVP 要件](../requirements/mvp-requirements.md)
+- [Phase 2 UI](phase2-ui.md)
+- [Design System](design-system.md)
 - [メディアファイル選択](media-selection.md)
 - [システム概要](../architecture/system-overview.md)
 - [メディア技術選定](../architecture/media-technology.md)
@@ -39,189 +41,242 @@
 - 音声・動画の両方を扱うため video 用構成を使用する
 - `media_kit_libs_audio` と `media_kit_libs_video` は同時使用しない
 
-## 3. 必須操作
+## 3. Phase 2 の必須操作
 
 | 操作 | 説明 |
 |------|------|
-| 再生 | 再生可能・一時停止・停止の状態から再生を開始する |
-| 一時停止 | 再生中のメディアを一時停止し、再生位置を保持する |
-| 停止 | 再生を止め、再生位置を先頭へ戻す（下記「停止の意味」） |
-| シーク | 再生位置を任意位置へ変更する |
-| 音量変更 | アプリ内の再生音量を変更する |
+| Select File / Select Another File | ファイル選択（詳細は media-selection.md） |
+| Play / Pause | 同一 Primary Control を状態で切替 |
+| Stop | 再生を止め、位置を先頭（00:00）へ戻す。Media はロードされたまま |
+| Seek | 再生位置を任意位置へ変更する |
+| Volume | アプリ内の再生音量を変更する |
+| Repeat OFF / ONE | Phase 2 のリピート（下記） |
+
+これ以外の Playback 操作を Phase 2 に追加しない（Previous / Next / Shuffle / 10 秒送り戻し / Fullscreen / Subtitle 等は対象外）。
 
 ## 4. 必須表示
 
 | 表示 | 説明 |
 |------|------|
 | ファイル名 | 現在扱っているメディアのファイル名 |
-| 現在の再生時間 | 現在位置 |
-| 総再生時間 | メディア全体の長さ |
+| Current Time | 現在位置（Monospace。横幅が揺れないこと） |
+| Total Duration | メディア全体の長さ（同上） |
 
 ### 動画の場合
 
-- 映像をアプリ内に表示する
+- 映像をアプリ内に表示する（画面の主役）
 
 ### 音声の場合
 
-- 動画表示領域を必須としない
+- 空の Video Box を表示しない
+- Static Audio Placeholder + File Name + Audio 種別表示
+- Artist / Album / Codec 等の未取得 Metadata は表示しない
+- Fake Dynamic Visualizer は禁止
 
-配色、レイアウト、アイコン等の UI 詳細は未確定。
+レイアウトの詳細は [phase2-ui.md](phase2-ui.md)、トークンは [design-system.md](design-system.md) を参照。
 
-## 5. 再生状態（概念）
+## 5. 再生状態（Media State）
 
-実装上の enum 名やクラス名は定めない。概念として少なくとも次を区別する。
+実装上の enum 名やクラス名は本ドキュメントでは固定しない。概念として少なくとも次を区別する。
 
 | 状態 | 意味 |
 |------|------|
-| 未選択 | メディアが選択されていない |
-| 読み込み中 | 選択後、再生準備のために読み込み中 |
-| 再生可能 | 読み込み成功。まだ再生していない、または停止後に再生可能な状態 |
-| 再生中 | 再生している |
-| 一時停止 | 再生を一時停止し、位置を保持している |
-| 停止 | 再生を止め、位置が先頭に戻っている（「再生可能」と同一視してもよいが、操作結果として区別して扱う） |
-| エラー | 読み込みまたは再生に失敗した |
+| `unselected` | メディアが選択されていない |
+| `loading` | 選択後、再生準備のために読み込み中 |
+| `ready` | 読み込み成功。まだ再生していない、または再生可能な待機 |
+| `playing` | 再生している |
+| `paused` | 一時停止。Position を保持 |
+| `stopped` | 再生を止め、Position が先頭（00:00） |
+| `error` | 読み込みまたは再生に失敗した（Blocking） |
 
-「停止」と「再生可能」を実装上まとめるかどうかは未確定。概念上は「停止操作の結果として先頭へ戻った状態」を持てばよい。
+Audio / Video 種別は状態とは別に Media 情報として保持する。UI は状態から描画する。
+
+`loading` 中は Play / Pause / Stop / Seek を操作不可とし、UI だけでなく Controller 側でも拒否する。
 
 ### 状態遷移（概念）
 
 ```text
-未選択
-  │ ファイル選択
+unselected
+  │ Select File
   ▼
-読み込み中
-  ├─ 成功 ──▶ 再生可能
-  └─ 失敗 ──▶ エラー
+loading
+  ├─ 成功 ──▶ ready
+  └─ 失敗 ──▶ error（Blocking）
 
-再生可能 / 停止
-  │ 再生
+ready / stopped
+  │ Play
   ▼
-再生中
-  ├─ 一時停止 ──▶ 一時停止 ──(再生)──▶ 再生中
-  ├─ 停止 ──────▶ 停止（位置は先頭）
-  ├─ 終端到達 ──▶ 停止（位置は先頭、自動ループしない）
-  └─ 失敗 ──────▶ エラー
+playing
+  ├─ Pause ─────▶ paused ──(Play)──▶ playing
+  ├─ Stop ──────▶ stopped（位置は 00:00、Media はロード維持）
+  ├─ 終端到達
+  │    ├─ Repeat OFF ──▶ stopped（00:00）
+  │    └─ Repeat ONE ──▶ 先頭から同じ Media を再生継続
+  └─ 失敗 ──────▶ error（Blocking）または Non-blocking（維持可能な場合）
 
-いずれの状態でも（エラー含む）別ファイル選択が可能
+いずれの状態でも（error 含む）Select Another File が可能
   │
   ▼
-現在の再生を停止し、新しいメディアを読み込み中へ
+現在の再生を止め、新しいメディアを loading へ
 ```
 
-キャンセルによるファイル選択中断は、再生状態を変更しない（[media-selection.md](media-selection.md)）。
+ファイル選択のキャンセルは再生状態を変更しない（[media-selection.md](media-selection.md)）。キャンセルは Error ではない。
 
-## 6. 停止の意味
+## 6. Play / Pause
 
-MVP の「停止」は次を意味する。
+同一の Primary Control を状態によって切り替える。
 
-1. 再生を停止する
-2. 再生位置を **先頭へ戻す**
+| 状態 | Primary Control |
+|------|-----------------|
+| `ready` / `paused` / `stopped` | Play |
+| `playing` | Pause |
 
-「一時停止」とは明確に区別する。
+Pause 時は Position を保持する。
 
-| 操作 | 再生 | 位置 |
-|------|------|------|
-| 一時停止 | 止める | 保持する |
-| 停止 | 止める | 先頭へ戻す |
+## 7. Stop の意味
 
-## 7. シーク
+nainai における Stop は次を意味する。
+
+1. Pause 相当に再生を止める
+2. Position を **00:00** へ戻す
+3. Media 自体はロードされたままとする
+
+その後 Play すると先頭から再生できる。
+
+| 操作 | 再生 | 位置 | Media |
+|------|------|------|-------|
+| Pause | 止める | 保持する | ロード維持 |
+| Stop | 止める | 00:00 へ戻す | ロード維持 |
+
+### media_kit の `Player.stop()` との差異
+
+`media_kit` の `Player.stop()` と、nainai の Stop は意味が異なる場合がある。
+
+- nainai の Stop は「再生停止 + 位置を先頭へ戻し + Media はロード維持」
+- media_kit API の stop がリソース解放や open 状態の破棄を伴う場合、nainai Stop の意味にそのまま対応させない
+
+実装では、nainai の Stop 仕様を満たすよう Controller 側で意味を定義する（必要なら pause + seek(0) 等で表現する）。
+
+## 8. Seek
 
 - ユーザーが再生位置を任意位置へ変更できる
-- UI 形式（スライダー等）は未確定
+- Phase 2 では Seek UI を提供する（レイアウトは phase2-ui.md）
 - 時間精度は今回固定しない
 
-将来の分割・タイムラインでは、より高精度な時間管理が必要になる。本 MVP のシーク設計は、その将来要件を阻害しないこと（位置を「時間」として扱えること）を前提とする。
+将来の分割・タイムラインでは、より高精度な時間管理が必要になる。本設計のシークは、その将来要件を阻害しないこと（位置を「時間」として扱えること）を前提とする。
 
-## 8. 音量
+## 9. Volume
 
-- MVP では **アプリ側の再生音量** を変更できる
+- Phase 2 では **アプリ側の再生音量** を変更できる
 - **OS 全体の音量設定を変更する機能ではない**
-- ミュートボタンの有無は未確定
-- 音量の粒度・UI 形式は未確定
+- ミュート専用ボタンは Phase 2 の必須操作に含めない
 
-## 9. ファイル切り替え
+## 10. Repeat
+
+Phase 2 の Repeat は次のみ。
+
+| 設定 | 終端到達時の挙動 |
+|------|------------------|
+| OFF | `stopped` へ遷移し、Position を 00:00 とする |
+| ONE | 現在 Media を繰り返す |
+
+- Repeat ONE Active は Accent Color で示す（[design-system.md](design-system.md)）
+- Repeat 設定はファイル切替後も、**アプリ起動中は保持**する
+- Repeat ALL は将来機能（Phase 2 では禁止）
+
+## 11. ファイル切り替え
 
 別ファイルが選択された場合:
 
-1. 現在のメディア再生を停止する
-2. 新しいメディアを読み込む
+1. 現在のメディア再生を止める
+2. 新しいメディアを読み込む（`loading`）
 3. 元ファイル自体には変更を加えない
 
-切り替え前の再生位置・一時停止状態は引き継がない（新しいメディアの読み込みに移行する）。
+切り替え前の再生位置・一時停止状態は引き継がない。
 
-## 10. 再生終了
+Repeat 設定はアプリ起動中は保持する（第 10 節）。
 
-メディアが最後まで再生された場合:
+## 12. エラー
 
-- 自動ループ再生は行わない
-- 再生を止め、再生位置を先頭へ戻した状態とする（停止と同等の扱い）
-- ループ再生は将来機能とする
+### Blocking Error
 
-## 11. エラー
+現在の Media を再生できない場合。Media 画面を Error 表示へ切り替えてよい。
 
-最低限、次を想定する。
+例文言: `Could not load this file.`
 
-- ファイルを開けない
-- ファイルが存在しなくなった
+- Select Another File を提供する
+- 技術的 Exception は表示しない
+- 原因が確定していない場合、`Unsupported format` / `File corrupted` などを断定しない
+- 色: Semantic Error（Red）
+
+想定要因の例（ユーザーへ断定文言としては出さない）:
+
+- ファイルを開けない / 存在しない
 - OS からアクセスを拒否された
 - メディアとして読み込めない
 - 再生処理に失敗した
 
-方針:
+### Non-blocking Error
 
-- ユーザーへエラー内容が分かる形で通知する（文言は未確定）
+現在 Media を維持可能な場合、Media 画面を Error 画面へ置き換えない。
+
+- Notification / Banner を使用する
+- 色: Semantic Warning（Amber）
+
+### Unknown Error / 問題報告
+
+将来的に問題報告機能へ接続予定とする。Phase 2 では Report ボタンを実装しない。
+
+方針共通:
+
 - アプリ全体をクラッシュさせない
-- エラー後も、別ファイルの選択など通常操作へ復帰できること
+- エラー後も別ファイル選択など通常操作へ復帰できること
 
-## 12. 必要となる UI 要素（詳細未確定）
+## 13. UI との対応
 
-- 再生 / 一時停止 / 停止の操作
-- シーク操作
-- 音量変更操作
-- ファイル名表示
-- 現在時間・総時間の表示
-- 動画映像の表示領域（動画時）
-- エラー通知の表示手段
+必要 UI の配置・Desktop / Mobile 差分は [phase2-ui.md](phase2-ui.md) を正とする。
 
-配色、ボタン位置、アイコン、フォント、画面サイズ、詳細レイアウト、アニメーションは未確定。
+Design Token・色・余白・形状は [design-system.md](design-system.md) を正とする。
 
-## 13. OS 別の考慮
+## 14. OS 別の考慮
 
 Windows / Android / iOS では、メディア再生の実装詳細が異なる可能性がある。
 
 Android / iOS ではサンドボックスや権限・ファイルアクセス制約が再生可否に影響しうる。詳細は実装時に確定する。
 
+Windows では Phase 2 で OS 標準 Window Chrome を使用する（独自の Minimize / Maximize / Close は作らない）。詳細は [phase2-ui.md](phase2-ui.md)。
+
 採用パッケージは [media-technology.md](../architecture/media-technology.md) を参照。
 
-## 14. ライセンス注意
+## 15. ライセンス注意
 
 `media_kit` はネイティブメディアライブラリやコーデック等を利用する。パッケージ本体のライセンスだけで製品全体の利用可否を判断してはいけない。
 
 **製品リリース前に、推移依存を含めたライセンス監査を必須とする。**（今回は監査未実施）
 
-## 15. 将来機能との境界
+## 16. 将来機能との境界
 
-MVP の再生には含めない。
+Phase 2 / MVP の再生には含めない。
 
-- 波形
-- タイムライン編集
-- 区間設定
-- 分割
-- 歌詞 / 字幕 / 説明
-- メタデータ編集
+- Previous / Next / Shuffle
+- Repeat ALL
+- Playlist / Library / Folder Playback
+- 波形 / Dynamic Visualizer
+- タイムライン編集 / 区間設定 / 分割
+- 歌詞 / 字幕 / Fullscreen
+- メタデータ編集・未取得 Metadata の表示
 - ファイル出力 / 保存先設定
-- ループ再生
+- Equalizer / Compressor
+- Drag & Drop
+- Editor Navigation
 
-本設計は、これら将来機能を阻害しないこと（時間位置の扱い、単一メディア切替モデル、非破壊方針）を前提とする。
+本設計は、これら将来機能を阻害しないこと（時間位置の扱い、単一メディア切替モデル、非破壊方針、Repeat の拡張余地）を前提とする。
 
-## 16. 未確定事項
+## 17. 未確定事項
 
 - 対応メディア形式
 - 再生状態の実装表現（enum / クラス等）
-- 「停止」と「再生可能」の実装上の統合可否
-- シーク UI・時間精度
-- 音量 UI・粒度・ミュートの有無
-- エラー通知の具体的な UI・文言
-- UI/UX の詳細
-- 分割処理技術 / FFmpeg 採用有無
+- Seek / Volume の時間精度・粒度
+- Banner / Notification の消失条件
 - 状態管理ライブラリ / ルーティングライブラリ
+- 分割処理技術 / FFmpeg 採用有無

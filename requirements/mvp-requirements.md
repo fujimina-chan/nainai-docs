@@ -41,6 +41,8 @@ MVP のクライアントは **Flutter** で実装します。
 
 - [メディアファイル選択](../design/media-selection.md)
 - [メディア再生](../design/media-playback.md)
+- [Phase 2 UI](../design/phase2-ui.md)
+- [Design System](../design/design-system.md)
 - [メディア技術選定](../architecture/media-technology.md)
 
 ## メディア関連技術（確定）
@@ -79,18 +81,31 @@ MVP のクライアントは **Flutter** で実装します。
 | 現在時間 | 再生中の現在位置（経過時間）を表示する |
 | 総時間 | メディアファイルの総再生時間を表示する |
 | 音量 | 再生音量を調整する |
+| Repeat OFF / ONE | 終端時の繰り返し。ALL は将来機能 |
 
-## 対象外（MVP では実装しない）
+UI 大枠・Design System は [phase2-ui.md](../design/phase2-ui.md) / [design-system.md](../design/design-system.md) を正とする。
 
-以下の機能は MVP のスコープ外です。
+## 対象外（MVP / Phase 2 では実装しない）
+
+以下の機能は MVP / Phase 2 のスコープ外です。
 
 | 機能 | 備考 |
 |------|------|
+| Previous / Next / Shuffle | Phase 2 禁止 |
+| Repeat ALL | 将来機能 |
+| Playlist / Library / Settings | 将来機能 |
+| Drag & Drop | Phase 2 対象外（OS File Picker のみ） |
+| Fullscreen / Subtitle / 10 秒送り戻し | Phase 2 禁止 |
+| Dynamic Audio Visualizer | 実音声非同期の疑似表現を含む。禁止 |
 | 分割 | 将来機能 |
 | 波形編集 | 将来機能 |
 | 歌詞編集 | 将来機能 |
 | 字幕編集 | 将来機能 |
 | ファイル出力 | 将来機能 |
+| Equalizer / Compressor / Editor / Timeline | 将来機能。Phase 2 UI に先行表示しない |
+| テーマ選択 UI | 将来。Theme Architecture のみ先行定義 |
+| 問題報告（Report）ボタン | 将来設計 |
+| 独自 Window Chrome | Phase 2 では OS 標準を使用 |
 | DB | 永続化レイヤーは MVP では不要 |
 | ログイン | 認証機能は不要 |
 | クラウド同期 | ローカルファイルのみ |
@@ -103,10 +118,10 @@ MVP のクライアントは **Flutter** で実装します。
 
 - 対応する音声・動画フォーマット（コーデック・コンテナ）の範囲
 - 出力先選択ライブラリ / API（ファイル出力は MVP 対象外）
-- 再生 UI のレイアウト・デザイン
-- 音量調整の粒度（スライダー範囲等）・ミュートの有無
-- エラー通知の具体的な UI・文言
-- 複数ファイルの同時管理（プレイリスト等）の要否
+- 音量調整の粒度（スライダー範囲等）
+- Banner / Notification の消失条件
 - 状態管理ライブラリ / ルーティングライブラリ
 - 分割処理技術 / FFmpeg 採用有無
 - backend 技術 / DB
+- フォントの Flutter 導入方法
+- 初期 Lavender Accent の詳細 Token 一覧

@@ -71,6 +71,14 @@ Local Media Playback
 
 関連 ADR: [ADR-0004](../adr/0004-file-selector.md)、[ADR-0005](../adr/0005-media-kit.md)
 
+## UI / Design System（Phase 2）
+
+再生 UI 大枠と Design System は次を正とする。
+
+- [phase2-ui.md](../design/phase2-ui.md)
+- [design-system.md](../design/design-system.md)
+- [media-playback.md](../design/media-playback.md)
+
 ## MVP で使用しないコンポーネント
 
 | コンポーネント | 状態 |
@@ -116,4 +124,3 @@ Local Media Playback / File Output
 - 認証・同期の方式
 - 分割処理技術 / FFmpeg 採用有無
 - 状態管理ライブラリ / ルーティングライブラリ
-- UI 詳細

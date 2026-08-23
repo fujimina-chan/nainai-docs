@@ -8,6 +8,8 @@
 
 - [MVP 要件](../requirements/mvp-requirements.md)
 - [メディア再生](media-playback.md)
+- [Phase 2 UI](phase2-ui.md)
+- [Design System](design-system.md)
 - [システム概要](../architecture/system-overview.md)
 - [メディア技術選定](../architecture/media-technology.md)
 - [ADR-0004 file_selector](../adr/0004-file-selector.md)
@@ -42,7 +44,8 @@ OS のファイル選択 UI（file_selector）
 
 - ユーザー操作によって OS のファイル選択 UI を開く
 - **アプリ起動時に自動でファイル選択画面を開かない**
-- 選択を開始する UI 要素（例: 「ファイルを選ぶ」操作）は必要。配色・位置・アイコン等の詳細は未確定
+- 未選択時の主役操作は **Select File**（選択後は **Select Another File**）。画面方針は [phase2-ui.md](phase2-ui.md)
+- Phase 2 では **Drag & Drop は対象外**（OS File Picker のみ）
 
 ## 4. 選択対象
 
@@ -122,13 +125,13 @@ Windows / Android / iOS では、ファイル選択・アクセスの実装詳�
 
 権限・アクセス制約の詳細は実装時に確定する。
 
-## 12. 必要となる UI 要素（詳細未確定）
+## 12. 必要となる UI 要素
 
-- ファイル選択を開始する操作
+- Select File / Select Another File
 - 選択中ファイルのファイル名表示（選択後）
 - キャンセル時に既存状態を維持できる画面構成
 
-配色、ボタン位置、アイコン、フォント、画面サイズ、詳細レイアウト、アニメーションは未確定。
+配色・余白・形状・タイポグラフィは [design-system.md](design-system.md)、画面構成は [phase2-ui.md](phase2-ui.md) を正とする。
 
 ## 13. エラー（選択まわり）
 
@@ -141,15 +144,17 @@ Windows / Android / iOS では、ファイル選択・アクセスの実装詳�
 
 方針:
 
-- ユーザーにエラー内容が分かる形で通知する（文言は未確定）
+- Blocking / Non-blocking の区分と表示色は [media-playback.md](media-playback.md) / [phase2-ui.md](phase2-ui.md) に従う
+- 技術的 Exception は表示しない
 - アプリ全体をクラッシュさせない
 - キャンセルはエラーに含めない
 
 ## 14. 将来機能との境界
 
-MVP のファイル選択には含めない。
+MVP / Phase 2 のファイル選択には含めない。
 
-- 複数ファイル同時選択
+- Drag & Drop
+- 複数ファイル同時選択 / Playlist / Folder Playback / Device Media
 - 波形 / タイムライン編集 / 区間設定 / 分割
 - 歌詞 / 字幕 / 説明 / メタデータ編集
 - ファイル出力 / 保存先設定（OutputLocationSelection）
@@ -162,5 +167,3 @@ MVP のファイル選択には含めない。
 - ファイル参照の内部表現
 - メディア種別の判定方法
 - 出力先選択ライブラリ / API
-- UI/UX の詳細
-- エラー通知の具体的な UI・文言

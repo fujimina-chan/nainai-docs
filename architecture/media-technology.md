@@ -6,6 +6,8 @@ MVP におけるローカルファイル選択および音声・動画再生の�
 
 - [メディアファイル選択](../design/media-selection.md)
 - [メディア再生](../design/media-playback.md)
+- [Phase 2 UI](../design/phase2-ui.md)
+- [Design System](../design/design-system.md)
 
 本ドキュメントは **どの技術で実現するか** を定めます。
 
@@ -138,7 +140,6 @@ OutputLocationSelection（技術未選定）…… 出力先のみ
 - 対応動画形式
 - 出力先選択ライブラリ / API
 - ファイル書き出し方式
-- UI 詳細
 - 状態管理ライブラリ
 - ルーティングライブラリ
 - 分割処理技術

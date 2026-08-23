@@ -6,11 +6,11 @@ nainai プロジェクト全体の設計・要件・意思決定を管理する�
 
 ## nainai について
 
-nainai は、端末内に保存されている音声・動画ファイルを選択し、アプリ内で再生・編集・出力するための Flutter アプリケーションです。
+nainai は、端末内に保存されている音声・動画ファイルを選択し、アプリ内で再生・編集・出力するための Flutter アプリケーションです。正式名称は **nainai** です（「nainai Media Player」ではない）。
 
 初期 MVP の対象は **Windows / Android / iOS** です。**Web / macOS / Linux** は初期 MVP の対象外ですが、将来対応予定です（恒久的な非対応ではありません）。
 
-詳細は [product-overview.md](requirements/product-overview.md)、[system-overview.md](architecture/system-overview.md)、および [ADR](adr/README.md) を参照してください。
+詳細は [product-overview.md](requirements/product-overview.md)、[system-overview.md](architecture/system-overview.md)、[Phase 2 UI](design/phase2-ui.md)、[Design System](design/design-system.md)、および [ADR](adr/README.md) を参照してください。
 
 ## 目的
 
@@ -26,9 +26,11 @@ nainai-docs/
 ├── requirements/                      # 要件定義
 │   ├── product-overview.md            # プロダクト全体像
 │   └── mvp-requirements.md            # 初期 MVP の要件
-├── design/                            # 機能設計
+├── design/                            # 機能設計・UI
 │   ├── media-selection.md             # 端末内メディアファイル選択
-│   └── media-playback.md              # 音声・動画のアプリ内再生
+│   ├── media-playback.md              # 音声・動画のアプリ内再生
+│   ├── phase2-ui.md                   # Phase 2 再生 UI 方針
+│   └── design-system.md               # Design System / Theme
 ├── architecture/                      # アーキテクチャ
 │   ├── system-overview.md             # システム構成
 │   ├── media-technology.md            # メディア技術選定
@@ -51,6 +53,8 @@ nainai-docs/
 | [mvp-requirements.md](requirements/mvp-requirements.md) | 初期 MVP の対象機能と対象外 |
 | [media-selection.md](design/media-selection.md) | 端末内メディアファイル選択の機能設計 |
 | [media-playback.md](design/media-playback.md) | 音声・動画のアプリ内再生の機能設計 |
+| [phase2-ui.md](design/phase2-ui.md) | Phase 2 再生 UI（Desktop / Mobile・状態別） |
+| [design-system.md](design/design-system.md) | Design Persona / Theme / Token / Typography |
 | [system-overview.md](architecture/system-overview.md) | システム構成とデータフロー |
 | [media-technology.md](architecture/media-technology.md) | ファイル選択・再生の技術選定 |
 | [repository-structure.md](architecture/repository-structure.md) | 4 リポジトリの責務と開発運用 |
