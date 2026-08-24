@@ -58,7 +58,7 @@ nainai-docs/
 | [system-overview.md](architecture/system-overview.md) | システム構成とデータフロー |
 | [media-technology.md](architecture/media-technology.md) | ファイル選択・再生の技術選定 |
 | [repository-structure.md](architecture/repository-structure.md) | 4 リポジトリの責務と開発運用 |
-| [development-environment.md](architecture/development-environment.md) | Windows リポジトリ配置など開発環境ルール |
+| [development-environment.md](architecture/development-environment.md) | Windows リポジトリ配置・開発環境 Known Issue |
 | [adr/README.md](adr/README.md) | ADR の目的と基本形式 |
 | [ADR-0001](adr/0001-use-flutter.md) | Flutter 採用 |
 | [ADR-0002](adr/0002-platform-roadmap.md) | プラットフォームロードマップ |

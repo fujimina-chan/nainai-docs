@@ -77,7 +77,9 @@
 
 ## 5. 再生状態（Media State）
 
-実装上の enum 名やクラス名は本ドキュメントでは固定しない。概念として少なくとも次を区別する。
+Phase 2-3 時点で、状態正本は **MediaController** が保持する immutable な **MediaState** とする。
+
+`MediaPlaybackStatus`:
 
 | 状態 | 意味 |
 |------|------|
@@ -89,35 +91,44 @@
 | `stopped` | 再生を止め、Position が先頭（00:00） |
 | `error` | 読み込みまたは再生に失敗した（Blocking） |
 
-Audio / Video 種別は状態とは別に Media 情報として保持する。UI は状態から描画する。
+- Audio / Video 種別は状態とは別に Media 情報として保持する。UI は状態から描画する
+- `isPlaying` / `isPaused` / `isLoading` 等の **重複 Boolean State は追加しない**
+- `loading` 中は Play / Pause / Stop / Seek を操作不可とし、UI だけでなく Controller 側でも拒否する
 
-`loading` 中は Play / Pause / Stop / Seek を操作不可とし、UI だけでなく Controller 側でも拒否する。
+### MediaController（Phase 2-3・実装済み）
+
+- `ChangeNotifier` を extends
+- Constructor Injection: `MediaSelectionService` / `MediaPlaybackService`
+- Package 固有型を Controller へ漏らさない
+- Public API: `selectMedia` / `play` / `pause` / `stop` / `seek` / `setVolume` / `setRepeatMode` / `toggleRepeatMode` / `state` / `dispose`
 
 ### 状態遷移（概念）
 
 ```text
 unselected
-  │ Select File
+  │ Select File（確定）
   ▼
 loading
-  ├─ 成功 ──▶ ready
-  └─ 失敗 ──▶ error（Blocking）
+  ├─ 成功 ──▶ ready（自動再生なし、error clear）
+  └─ 失敗 ──▶ error（Blocking。旧 Media へ rollback しない）
 
 ready / stopped
   │ Play
   ▼
 playing
   ├─ Pause ─────▶ paused ──(Play)──▶ playing
-  ├─ Stop ──────▶ stopped（位置は 00:00、Media はロード維持）
+  ├─ Stop ──────▶ stopped（位置は 00:00、Media はロード維持、repeatMode 維持）
   ├─ 終端到達
-  │    ├─ Repeat OFF ──▶ stopped（00:00）
-  │    └─ Repeat ONE ──▶ 先頭から同じ Media を再生継続
-  └─ 失敗 ──────▶ error（Blocking）または Non-blocking（維持可能な場合）
+  │    ├─ Repeat OFF ──▶ seek(0) → stopped（00:00）。Player.stop() は使わない
+  │    └─ Repeat ONE ──▶ media_kit single に委譲。Controller は stopped にしない
+  └─ 失敗 ──────▶ error（Blocking）または Non-blocking（status 維持）
 
 いずれの状態でも（error 含む）Select Another File が可能
   │
   ▼
-現在の再生を止め、新しいメディアを loading へ
+選択確定前は旧 State を維持
+選択確定後 → selectedMedia=新 / loading / position=0 / duration=0
+（volume / repeatMode は維持。失敗時も旧 Media へ rollback しない）
 ```
 
 ファイル選択のキャンセルは再生状態を変更しない（[media-selection.md](media-selection.md)）。キャンセルは Error ではない。
@@ -131,7 +142,10 @@ playing
 | `ready` / `paused` / `stopped` | Play |
 | `playing` | Pause |
 
-Pause 時は Position を保持する。
+| 操作成功時 | status | position |
+|------------|--------|----------|
+| `play` | `playing` | （変更しない） |
+| `pause` | `paused` | 維持 |
 
 ## 7. Stop の意味
 
@@ -140,28 +154,35 @@ nainai における Stop は次を意味する。
 1. Pause 相当に再生を止める
 2. Position を **00:00** へ戻す
 3. Media 自体はロードされたままとする
+4. Repeat 設定は維持する
 
 その後 Play すると先頭から再生できる。
 
-| 操作 | 再生 | 位置 | Media |
-|------|------|------|-------|
-| Pause | 止める | 保持する | ロード維持 |
-| Stop | 止める | 00:00 へ戻す | ロード維持 |
+| 操作 | 再生 | 位置 | Media | status（成功時） |
+|------|------|------|-------|------------------|
+| Pause | 止める | 保持する | ロード維持 | `paused` |
+| Stop | 止める | 00:00 へ戻す | ロード維持 | `stopped` |
 
-### media_kit の `Player.stop()` との差異
+### 実装確認
 
-`media_kit` の `Player.stop()` と、nainai の Stop は意味が異なる場合がある。
+nainai Stop は次で実現する。
 
-- nainai の Stop は「再生停止 + 位置を先頭へ戻し + Media はロード維持」
-- media_kit API の stop がリソース解放や open 状態の破棄を伴う場合、nainai Stop の意味にそのまま対応させない
+- `pause`
+- `seek(Duration.zero)`
 
-実装では、nainai の Stop 仕様を満たすよう Controller 側で意味を定義する（必要なら pause + seek(0) 等で表現する）。
+**`Player.stop()` は使用しない。**
+
+理由: media_kit の `stop` は Media を unload するため、nainai の Stop 仕様（Media loaded 維持）と異なる。
+
+詳細な Package 挙動は [media-technology.md](../architecture/media-technology.md) を参照。
 
 ## 8. Seek
 
 - ユーザーが再生位置を任意位置へ変更できる
 - Phase 2 では Seek UI を提供する（レイアウトは phase2-ui.md）
 - 時間精度は今回固定しない
+
+MediaController でも `0 <= position <= duration` に clamp する（負値は zero。duration 既知なら上限を duration）。Service 側 Guard との二段防御。
 
 将来の分割・タイムラインでは、より高精度な時間管理が必要になる。本設計のシークは、その将来要件を阻害しないこと（位置を「時間」として扱えること）を前提とする。
 
@@ -171,32 +192,89 @@ nainai における Stop は次を意味する。
 - **OS 全体の音量設定を変更する機能ではない**
 - ミュート専用ボタンは Phase 2 の必須操作に含めない
 
+| 境界 | スケール |
+|------|----------|
+| nainai 内部（MediaController / MediaState / UI） | `0.0`～`1.0`（MediaVolume で clamp） |
+| media_kit 1.2.6 | `0`～`100` |
+
+変換は Playback Service 境界で行い、media_kit の Volume scale を Controller / UI へ漏らさない。
+
+Media 未選択でも Session 設定として Volume 変更可能とする。
+
 ## 10. Repeat
 
-Phase 2 の Repeat は次のみ。
+Phase 2 の Repeat は `off` / `one` のみ。
 
 | 設定 | 終端到達時の挙動 |
 |------|------------------|
-| OFF | `stopped` へ遷移し、Position を 00:00 とする |
-| ONE | 現在 Media を繰り返す |
+| OFF | MediaController が `seek(Duration.zero)` → `stopped` + position zero |
+| ONE | media_kit の `PlaylistMode.single` に委譲。Controller は manual seek/play せず、`stopped` にしない |
 
+- `toggleRepeatMode`: off → one / one → off
 - Repeat ONE Active は Accent Color で示す（[design-system.md](design-system.md)）
-- Repeat 設定はファイル切替後も、**アプリ起動中は保持**する
+- File switch / Stop 後も **アプリ起動中は保持**
 - Repeat ALL は将来機能（Phase 2 では禁止）
+- completed を受けて手動で `seek` → `play` する Repeat は行わない
 
-## 11. ファイル切り替え
+Package 側の `PlaylistMode` 対応は [media-technology.md](../architecture/media-technology.md) を参照。
 
-別ファイルが選択された場合:
+## 11. Load とファイル切り替え
 
-1. 現在のメディア再生を止める
-2. 新しいメディアを読み込む（`loading`）
-3. 元ファイル自体には変更を加えない
+### Load
 
-切り替え前の再生位置・一時停止状態は引き継がない。
+`SelectedMedia.sourceUri` を再生基盤へ渡し、**自動再生しない**（open 時 `play: false`）。
 
-Repeat 設定はアプリ起動中は保持する（第 10 節）。
+| 結果 | MediaState |
+|------|------------|
+| 成功 | `status = ready`、`position = zero`、error clear、自動再生なし |
+| 失敗 | `selectedMedia` は新 Media のまま、`status = error`、`position`/`duration` = zero。旧 Media へ rollback しない |
 
-## 12. エラー
+### ファイル切り替え
+
+Media A 使用中に B を選択した場合:
+
+1. **B 選択確定前** → A の State を維持
+2. **B 選択確定後** → `selectedMedia = B`、`status = loading`、`position`/`duration` = zero
+3. `volume` / `repeatMode` は維持
+4. 元ファイル自体には変更を加えない
+5. B の load 失敗時も A へ rollback しない
+
+切替時に、旧 Media へ対して nainai Stop や `Player.stop()` を必須としない。**新 Media をそのまま open** する。
+
+### generation 二段防御（実装済み）
+
+| 層 | 役割 |
+|----|------|
+| MediaKitPlaybackService | load serialization / generation |
+| MediaController | `_loadGeneration` による stale async result の state 更新抑制 |
+
+詳細は [media-technology.md](../architecture/media-technology.md)。
+
+## 12. Stream 購読（completed / playing / position 等）
+
+MediaController は Playback Service の Stream を購読済み（Phase 2-3）。
+
+- **`playing == false` は `paused` へ自動遷移しない**
+- `playing == true` のとき、矛盾しない状態なら `playing` へ同期可能
+- Playback status 遷移の正本は **MediaController**
+- `position` / `duration` / `volume` は正規化・clamp のうえ、値が変わった場合のみ State 更新
+
+| Repeat | completed 時 |
+|--------|----------------|
+| OFF | `seek(Duration.zero)` → `stopped` + position zero。`Player.stop()` は使わない |
+| ONE | media_kit single に委譲。Controller は manual seek/play せず、`stopped` にしない |
+
+### dispose（実装済み）
+
+基本順:
+
+1. Controller 所有 Subscription を cancel
+2. `MediaPlaybackService.dispose()`
+3. `super.dispose()`
+
+dispose 後に `notifyListeners` しない Guard を持つ。
+
+## 13. エラー
 
 ### Blocking Error
 
@@ -207,14 +285,8 @@ Repeat 設定はアプリ起動中は保持する（第 10 節）。
 - Select Another File を提供する
 - 技術的 Exception は表示しない
 - 原因が確定していない場合、`Unsupported format` / `File corrupted` などを断定しない
+- Error String から `unsupportedMedia` を推測しない
 - 色: Semantic Error（Red）
-
-想定要因の例（ユーザーへ断定文言としては出さない）:
-
-- ファイルを開けない / 存在しない
-- OS からアクセスを拒否された
-- メディアとして読み込めない
-- 再生処理に失敗した
 
 ### Non-blocking Error
 
@@ -222,6 +294,27 @@ Repeat 設定はアプリ起動中は保持する（第 10 節）。
 
 - Notification / Banner を使用する
 - 色: Semantic Warning（Amber）
+
+### Error 区分と扱い（Phase 2-3）
+
+| 区分 | 扱い |
+|------|------|
+| `selectionFailed` / `unsupportedMedia` | **non-blocking**。現在 Media / status を維持し `error` のみ更新 |
+| `operationFailed` | 原則 **non-blocking**。status 維持、error 更新 |
+| `loadFailed` / `mediaUnavailable` / `playbackFailed` 等の fatal | **blocking** として `status = error`（操作文脈を考慮） |
+
+`MediaSelectionException` は MediaController で `MediaError` へ変換する。
+
+media_kit では、一部失敗が open Future の throw ではなく後続 error stream として流れる場合がある。Service 単独では完全分類できない。
+
+Phase 2-3 実装: `errorStream` から `playbackFailed` を受け、**MediaController の現在 status が `loading` なら `loadFailed` へ寄せる**。これは Controller 状態を利用した Phase 2 範囲の分類であり、media_kit の非同期 error を 100% 正確に load/playback 由来へ識別できるとは断定しない。
+
+### Error clear（Phase 2）
+
+- 新 Media 選択 + load 成功 → error clear
+- 成功した操作 → 関連する selection / operation 系 non-blocking error を clear 可能
+- blocking error → 無関係な Volume 操作成功等では消さない。正常な新 Media load 等で復旧
+- 過剰な Error 履歴管理は行わない
 
 ### Unknown Error / 問題報告
 
@@ -232,29 +325,31 @@ Repeat 設定はアプリ起動中は保持する（第 10 節）。
 - アプリ全体をクラッシュさせない
 - エラー後も別ファイル選択など通常操作へ復帰できること
 
-## 13. UI との対応
+## 14. UI との対応
 
 必要 UI の配置・Desktop / Mobile 差分は [phase2-ui.md](phase2-ui.md) を正とする。
 
 Design Token・色・余白・形状は [design-system.md](design-system.md) を正とする。
 
-## 14. OS 別の考慮
+## 15. OS 別の考慮
 
 Windows / Android / iOS では、メディア再生の実装詳細が異なる可能性がある。
 
-Android / iOS ではサンドボックスや権限・ファイルアクセス制約が再生可否に影響しうる。詳細は実装時に確定する。
+Android / iOS ではサンドボックスや権限・ファイルアクセス制約が再生可否に影響しうる。詳細は実装時に確定する。iOS で未検証の挙動を確定仕様にしない。
 
 Windows では Phase 2 で OS 標準 Window Chrome を使用する（独自の Minimize / Maximize / Close は作らない）。詳細は [phase2-ui.md](phase2-ui.md)。
 
-採用パッケージは [media-technology.md](../architecture/media-technology.md) を参照。
+採用パッケージ・初期化・lifecycle は [media-technology.md](../architecture/media-technology.md) を参照。
 
-## 15. ライセンス注意
+開発環境上の Known Issue は [development-environment.md](../architecture/development-environment.md) を参照。
+
+## 16. ライセンス注意
 
 `media_kit` はネイティブメディアライブラリやコーデック等を利用する。パッケージ本体のライセンスだけで製品全体の利用可否を判断してはいけない。
 
 **製品リリース前に、推移依存を含めたライセンス監査を必須とする。**（今回は監査未実施）
 
-## 16. 将来機能との境界
+## 17. 将来機能との境界
 
 Phase 2 / MVP の再生には含めない。
 
@@ -272,11 +367,11 @@ Phase 2 / MVP の再生には含めない。
 
 本設計は、これら将来機能を阻害しないこと（時間位置の扱い、単一メディア切替モデル、非破壊方針、Repeat の拡張余地）を前提とする。
 
-## 17. 未確定事項
+## 18. 未確定事項
 
-- 対応メディア形式
-- 再生状態の実装表現（enum / クラス等）
-- Seek / Volume の時間精度・粒度
+- **正式な再生対応形式一覧**（rough classification とは別。Selection 側の拡張子表は再生保証ではない）
+- Seek / Volume の時間精度・粒度（UI）
 - Banner / Notification の消失条件
+- **VideoController の Presentation への受け渡し境界**（Phase 2-4 UI 未実装。確定済み仕様のように扱わない）
 - 状態管理ライブラリ / ルーティングライブラリ
 - 分割処理技術 / FFmpeg 採用有無

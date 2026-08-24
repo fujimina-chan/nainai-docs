@@ -77,9 +77,40 @@ Flutter **3.47.0** / Windows 環境において、標準配置（ASCII 実パス
 
 ジャンクションは使用していない。
 
+## Known Issues（開発環境）
+
+Product Requirement ではない。ローカル開発・ビルド環境上の制約として記録する。恒久解決策は未決定。
+
+### Windows: exFAT と plugin symlink
+
+現在の主要開発配置は `D:\fyna\dev\nainai\` である。
+
+当該 `D:` が exFAT の場合、Flutter plugin が必要な Windows build で plugin symlink 作成時に `ERROR_INVALID_FUNCTION` となることを確認済み。
+
+- Phase 2 実装コードの compile error ではない
+- filesystem 環境制約である
+
+**重要:**
+
+- これを解消するために **C: へ作業コピーする運用を正式手順として採用しない**
+- nainai の作業場所は **D: を維持**する
+- Windows build 環境の正式解決策は別途決定する
+
+### Android: 依存取得時の SSL / PKIX
+
+現在の Windows 開発環境では、`media_kit_libs_android_video` 等の取得時に SSL context / PKIX 関連の問題が発生しうる。
+
+- Phase 2-1 では一時的な truststore 変更で build 成功した例があるが、ユーザー共通 Gradle 設定は作業終了後に復旧済み
+- Phase 2-2 では共通設定を変更せず、環境問題として扱った
+- Product Requirement ではない
+- 恒久解決策は未決定
+
+個人のセキュリティ製品名・ユーザー名など、不要な個人環境情報は本正本に残さない。
+
 ## 関連文書
 
 - [repository-structure.md](repository-structure.md) … リポジトリ責務と開発運用
 - [system-overview.md](system-overview.md) … システム構成
+- [media-technology.md](media-technology.md) … メディア技術選定・Package 挙動
 - [ADR-0001 Flutter 採用](../adr/0001-use-flutter.md)
 - [ADR-0002 プラットフォームロードマップ](../adr/0002-platform-roadmap.md)

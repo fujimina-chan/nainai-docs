@@ -42,7 +42,7 @@ Local Media File
        ↓
 Operating System File Picker
        ↓
-nainai-client
+MediaController（MediaState 正本）
        ↓
 Local Media Playback
 ```
@@ -53,7 +53,7 @@ Local Media Playback
 |------|------|
 | Local Media File | 端末内ストレージに保存されている音声・動画ファイル |
 | Operating System File Picker | Windows / Android / iOS それぞれの OS が提供するファイル選択 UI |
-| nainai-client | Flutter アプリ本体（初期 MVP: Windows / Android / iOS） |
+| MediaController | Selection / Playback Service を束ね、immutable MediaState を状態正本とする（Phase 2-3 実装済み。詳細は [media-playback.md](../design/media-playback.md)） |
 | Local Media Playback | Flutter アプリ内でのメディア再生（`media_kit` 系。詳細は [media-technology.md](media-technology.md)） |
 
 ## メディア技術（確定）
@@ -78,6 +78,8 @@ Local Media Playback
 - [phase2-ui.md](../design/phase2-ui.md)
 - [design-system.md](../design/design-system.md)
 - [media-playback.md](../design/media-playback.md)
+
+開発環境ルール・Known Issue は [development-environment.md](development-environment.md) を参照。
 
 ## MVP で使用しないコンポーネント
 

@@ -116,7 +116,7 @@ UI 大枠・Design System は [phase2-ui.md](../design/phase2-ui.md) / [design-s
 
 以下は MVP 実装時に決定が必要な項目です。本ドキュメントでは確定しません。
 
-- 対応する音声・動画フォーマット（コーデック・コンテナ）の範囲
+- **正式な再生対応形式一覧**（コーデック・コンテナ）。Selection の MediaKind rough classification 用拡張子は [media-selection.md](../design/media-selection.md) を参照。再生保証ではない
 - 出力先選択ライブラリ / API（ファイル出力は MVP 対象外）
 - 音量調整の粒度（スライダー範囲等）
 - Banner / Notification の消失条件

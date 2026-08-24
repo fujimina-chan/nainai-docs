@@ -32,6 +32,8 @@ MVP におけるローカルファイル選択および音声・動画再生の�
 
 関連 ADR: [ADR-0004](../adr/0004-file-selector.md)
 
+機能仕様（SelectedMedia / MediaKind / Error）は [media-selection.md](../design/media-selection.md) を正とする。
+
 ### 用途（責務）
 
 ユーザーが端末内に保存されている音声・動画ファイルを選択することに **限定** する。
@@ -47,6 +49,29 @@ MVP におけるローカルファイル選択および音声・動画再生の�
 - Windows / Android / iOS に対応する
 - 将来予定の Web / macOS / Linux にも対応する
 - 単一ファイル選択という MVP 要件を満たす
+
+### 実装確認（file_selector 1.1.0）
+
+確認済み API:
+
+- `openFile()`
+- Cancel 時は `null`
+
+`XTypeGroup` で用いるフィルタ:
+
+- `extensions`
+- `mimeTypes`
+- `uniformTypeIdentifiers`
+
+Platform 確認事項（**当該バージョンで確認した範囲**。将来バージョンでも同一とは断定しない）:
+
+| プラットフォーム | 確認事項 |
+|------------------|----------|
+| Windows | `extensions` が必要 |
+| Android | `extensions` または `mimeTypes` |
+| iOS | UTI（`uniformTypeIdentifiers`）指定が必要 |
+
+Web source 実装詳細は本フェーズの対象外。
 
 ## 3. 入力ファイル選択と出力先選択の責務分離
 
@@ -82,10 +107,13 @@ OS ごとにディレクトリ選択・保存先選択の制約が異なるた�
 
 関連 ADR: [ADR-0005](../adr/0005-media-kit.md)
 
+機能仕様（Stop / Repeat / Volume / Error）は [media-playback.md](../design/media-playback.md) を正とする。
+
 ### 構成方針
 
 - 音声と動画の両方を扱うため、**video 用構成**（`media_kit_libs_video`）を使用する
 - `media_kit_libs_audio` と `media_kit_libs_video` を **同時使用しない**
+- `media_kit_libs_audio_video` 等を重複導入しない
 
 ### 責務
 
@@ -103,6 +131,105 @@ OS ごとにディレクトリ選択・保存先選択の制約が異なるた�
 - 再生、一時停止、シーク、音量、再生位置等の MVP 要件に適合する
 - 動画描画にも対応できる
 
+### 初期化（実装確認）
+
+Player / VideoController 利用前に、次の順で初期化する。
+
+```text
+WidgetsFlutterBinding.ensureInitialized()
+  ↓
+MediaKit.ensureInitialized()
+  ↓
+runApp(...)
+```
+
+### Player / VideoController lifecycle（実装確認）
+
+Playback Service（MediaKitPlaybackService）は Service lifetime で次を所有する。
+
+- `Player` 1 個
+- `VideoController` 1 個
+
+ファイルごとに再生成しない。
+
+`media_kit_video` 2.0.1 では、VideoController に独立した dispose API がないことを確認済み。Player.dispose 側の lifecycle を使用する。
+
+**VideoController の Presentation への受け渡し境界は Phase 2-2 時点では未確定。** 確定済み仕様のように扱わない。
+
+### Load（実装確認）
+
+```text
+SelectedMedia.sourceUri
+  ↓
+Media(...)
+  ↓
+Player.open(..., play: false)
+```
+
+自動再生しない。
+
+ファイル切替時、旧 Media への `seek(0)` / `stop` を必須とせず、新 Media をそのまま `open` する（製品仕様は [media-playback.md](../design/media-playback.md)）。
+
+### Player.open の concurrency（実装確認）
+
+media_kit 1.2.6 の Native Player 実装確認:
+
+- 同一 Player への operation は内部 lock で直列化される
+- cancel API はない
+
+nainai 側 Service では、さらに次で保護する。
+
+- load generation
+- Future chain による serialization
+
+例:
+
+```text
+A open 中
+  ↓
+B 要求
+  ↓
+C 要求
+  ↓
+A 完了
+  ↓
+B が open 前に stale なら skip
+  ↓
+C open
+```
+
+最後に要求された Media が最終 Media になるよう保護する。
+
+加えて MediaController 側の `_loadGeneration` により、stale な async 結果での State 更新を抑制する（**Service + Controller 二段防御・実装済み**）。製品側の状態遷移は [media-playback.md](../design/media-playback.md) を参照。
+
+### Stop（Package 対応）
+
+nainai Stop は `pause` + `seek(Duration.zero)`。**`Player.stop()` は使わない**（Media unload のため）。詳細は [media-playback.md](../design/media-playback.md)。
+
+### Volume scale（実装確認）
+
+| 境界 | スケール |
+|------|----------|
+| nainai 内部 | `0.0`～`1.0` |
+| media_kit 1.2.6 | `0`～`100` |
+
+変換は Playback Service 境界で行う。scale を UI / MediaState へ漏らさない。
+
+### Repeat（Package 対応）
+
+| nainai | media_kit 1.2.6 |
+|--------|-----------------|
+| Repeat OFF | `PlaylistMode.none` |
+| Repeat ONE | `PlaylistMode.single` |
+
+Repeat ONE は media_kit の single repeat を利用する。manual な completed → seek → play による Repeat は行わない。Repeat ALL は Phase 2 対象外。
+
+### Error stream の注意（実装確認）
+
+一部の open / decoder / file 系失敗は、open Future の throw ではなく後続 error stream として流れる場合がある。Service 単独での完全分類はできない。
+
+Phase 2-3: MediaController は `errorStream` の `playbackFailed` 受信時、現在 status が `loading` なら `loadFailed` へ寄せる（Phase 2 範囲の分類。100% の由来識別は断定しない）。製品側の Error 区分は [media-playback.md](../design/media-playback.md) を参照。
+
 ## 5. 責務の整理
 
 ```text
@@ -110,7 +237,7 @@ Local Media File
        ↓
 MediaSelection（file_selector）…… 入力のみ
        ↓
-nainai-client
+MediaController（MediaState 正本。Selection / Playback Service を Injection）
        ↓
 Local Media Playback（media_kit + media_kit_video + media_kit_libs_video）
 
@@ -121,6 +248,7 @@ OutputLocationSelection（技術未選定）…… 出力先のみ
 | 領域 | 技術 | 備考 |
 |------|------|------|
 | 入力ファイル選択 | `file_selector` 1.1.0 | 出力先選択には使わない |
+| 状態・操作境界 | MediaController | Package 型を漏らさない。詳細は media-playback.md |
 | 再生 | `media_kit` 系（上記バージョン） | audio libs との同時使用なし |
 | 出力先選択 | 未選定 | MediaSelection と分離 |
 
@@ -136,12 +264,14 @@ OutputLocationSelection（技術未選定）…… 出力先のみ
 
 ## 7. 未確定事項
 
-- 対応音声形式
-- 対応動画形式
+- **正式な再生対応形式一覧**（Selection の rough classification 用拡張子とは別。再生保証ではない）
 - 出力先選択ライブラリ / API
 - ファイル書き出し方式
+- VideoController の Presentation 受け渡し境界
 - 状態管理ライブラリ
 - ルーティングライブラリ
 - 分割処理技術
 - FFmpeg 採用有無
 - backend 技術 / DB
+- Windows build 環境制約の恒久解決策（[development-environment.md](development-environment.md)）
+- Android 依存取得時の SSL 問題の恒久解決策（同上）

@@ -51,11 +51,12 @@ OS のファイル選択 UI（file_selector）
 
 | 種別 | MVP |
 |------|-----|
-| 音声 | 対象 |
-| 動画 | 対象 |
+| 音声（`MediaKind.audio`） | 対象 |
+| 動画（`MediaKind.video`） | 対象 |
 
-- 具体的な拡張子・コーデック・コンテナ一覧は **未確定**（別途選定）
-- OS のファイル選択 UI で音声・動画を選べる形にする。フィルタの詳細は実装時に決定する
+- OS のファイル選択 UI で音声・動画を選べる形にする
+- **正式な再生対応形式一覧（official supported formats）は未確定**。再生保証でもない
+- MediaKind の rough classification 用拡張子は後述。Package API 詳細は [media-technology.md](../architecture/media-technology.md)
 
 ## 5. 単一ファイル選択
 
@@ -74,17 +75,40 @@ OS のファイル選択 UI（file_selector）
 | 既存メディアを破棄しない | 既に選択・再生中のファイルがある場合、それを勝手に破棄しない |
 | UI を異常状態にしない | キャンセル前の状態を維持する |
 
-## 7. 選択成功後に扱う情報
+`file_selector` 1.1.0 では Cancel 時に `openFile()` が `null` を返す（確認範囲は当該バージョン）。
 
-選択成功時、アプリ側で最低限以下を扱えること。
+MediaController（Phase 2-3）: `MediaSelectionService.selectMedia()` が `null`（Cancel）のとき **State を一切変更しない**（`selectedMedia` / `status` / `position` / `duration` / `volume` / `repeatMode` / `error` を維持）。Cancel は Error ではない。
 
-| 情報 | 説明 |
-|------|------|
-| ファイル名 | 表示用 |
-| ファイルへの参照 | 再生等でファイルへアクセスするための参照 |
-| メディア種別 | 音声 / 動画 |
+## 7. 選択成功後に扱う情報（SelectedMedia）
 
-取得方法、内部型、パス表現、URI 表現等の詳細は実装時に決定する。
+選択成功時、Domain では **`SelectedMedia`** として扱う。
+
+| 情報 | 表現 | 説明 |
+|------|------|------|
+| ファイル名 | （表示用） | UI 表示 |
+| ソース参照 | `Uri sourceUri` | 再生等でアクセスするための参照 |
+| メディア種別 | `MediaKind`（`audio` / `video` のみ） | rough classification の結果 |
+
+方針:
+
+- `XFile` を Domain 全体へ流さない
+- ローカル Path は `Uri.file(...)` で **file URI** へ変換して保持する
+- `String path` を恒久 Domain Model へ固定しない
+
+### MediaKind の rough classification（Selection 実装）
+
+分類手順:
+
+1. `audio/*` / `video/*` の MIME が利用可能なら優先
+2. MIME が得られなければ extension fallback
+3. どちらでも分類不可なら `unsupportedMedia`
+
+| MediaKind | rough classification 用 extension（例） |
+|-----------|----------------------------------------|
+| audio | mp3, wav, m4a, aac, flac, ogg, opus, wma |
+| video | mp4, mkv, mov, avi, webm, m4v, wmv, mpeg, mpg |
+
+**重要:** 上表は **MediaKind classification 用** である。正式な再生対応形式一覧ではなく、再生保証（playback guarantee）でもない。
 
 ## 8. 元ファイルに対する非破壊方針
 
@@ -102,12 +126,12 @@ OS のファイル選択 UI（file_selector）
 
 - 再生中・停止中を問わず、ユーザーは別のファイルを選択できる
 - 別ファイル選択時の再生側の挙動は [media-playback.md](media-playback.md) の「ファイル切り替え」に従う
-  - 現在のメディア再生を停止し、新しいメディアを読み込む
+  - 新しいメディアを読み込む（切替時の Player 操作詳細は media-playback / media-technology）
   - 元ファイル自体には変更を加えない
 
 ## 10. 入力選択と出力先選択の分離
 
-本機能は **入力ファイル選択（MediaSelection）** のみを扱う。
+本機能は **入力ファイル選択（Media Selection）** のみを扱う。
 
 将来の出力先選択（OutputLocationSelection）とは別責務とする。`file_selector` を将来のすべてのファイル入出力へ直接利用する設計にはしない。出力先技術は未選定。
 
@@ -115,17 +139,32 @@ OS のファイル選択 UI（file_selector）
 
 ## 11. OS 別の考慮
 
-Windows / Android / iOS では、ファイル選択・アクセスの実装詳細が異なる可能性がある。
+Windows / Android / iOS では、ファイル選択・アクセスの実装詳細が異なる。
 
-| プラットフォーム | 考慮事項（方針レベル） |
-|------------------|------------------------|
+| プラットフォーム | 方針 |
+|------------------|------|
 | Windows | OS のファイル選択 UI を `file_selector` 経由で利用 |
 | Android | サンドボックス、ストレージ権限、ファイルアクセス制約がある |
 | iOS | サンドボックス、権限、ファイルアクセス制約がある |
 
-権限・アクセス制約の詳細は実装時に確定する。
+`XTypeGroup`（extensions / mimeTypes / uniformTypeIdentifiers）の Platform 要件は、`file_selector` 1.1.0 で確認した範囲として [media-technology.md](../architecture/media-technology.md) に記録する。将来バージョンでも同一とは断定しない。
 
-## 12. 必要となる UI 要素
+権限・アクセス制約の詳細は実装・実機検証で確定する。iOS での未検証挙動を確定仕様にしない。
+
+## 12. Picker の二重起動防止
+
+OS File Picker の二重起動防止は、次の **二段 Guard として実装済み**（Phase 2-3）。
+
+| 層 | 内容 |
+|----|------|
+| `FileSelectorMediaSelectionService` | Service 側 transient guard |
+| `MediaController` | `_isSelecting` により、Picker 実行中の 2 回目の `selectMedia()` を Service へ到達させない |
+
+- Picker 実行中の再呼び出しは、新しい Picker を開かない
+- 成功 / Cancel / Exception の全経路で Guard を解除する
+- `_isSelecting` は **MediaPlaybackStatus に含めない** transient state
+
+## 13. 必要となる UI 要素
 
 - Select File / Select Another File
 - 選択中ファイルのファイル名表示（選択後）
@@ -133,23 +172,28 @@ Windows / Android / iOS では、ファイル選択・アクセスの実装詳�
 
 配色・余白・形状・タイポグラフィは [design-system.md](design-system.md)、画面構成は [phase2-ui.md](phase2-ui.md) を正とする。
 
-## 13. エラー（選択まわり）
+## 14. エラー（Selection）
 
 選択成功後の読み込み・再生失敗は主に [media-playback.md](media-playback.md) で扱う。
 
-選択フロー自体では、少なくとも次を想定する。
+Selection フローで確認済みの区分:
 
-- OS からアクセスを拒否された
-- 選択結果をアプリが利用できない
+| 結果 | 扱い |
+|------|------|
+| Picker Cancel | Error ではない。MediaController は State を変更しない |
+| Picker 起動 / 取得失敗 | `selectionFailed`（**non-blocking**。現在 Media / status 維持、error のみ更新） |
+| Audio / Video 分類不能 | `unsupportedMedia`（同上） |
 
 方針:
 
-- Blocking / Non-blocking の区分と表示色は [media-playback.md](media-playback.md) / [phase2-ui.md](phase2-ui.md) に従う
-- 技術的 Exception は表示しない
+- Selection Service の Package 固有 Exception は nainai 側 Exception（Controller では `MediaError`）へ変換する
+- ユーザー向け文言は Presentation 層の責務
+- Blocking / Non-blocking の表示方針は [media-playback.md](media-playback.md) / [phase2-ui.md](phase2-ui.md) に従う
+- 技術的 Exception 文字列をそのまま表示しない
 - アプリ全体をクラッシュさせない
 - キャンセルはエラーに含めない
 
-## 14. 将来機能との境界
+## 15. 将来機能との境界
 
 MVP / Phase 2 のファイル選択には含めない。
 
@@ -161,9 +205,8 @@ MVP / Phase 2 のファイル選択には含めない。
 
 本設計は、これら将来機能を阻害しないこと（単一選択モデルの拡張余地、非破壊方針、入出力責務分離）を前提とする。
 
-## 15. 未確定事項
+## 16. 未確定事項
 
-- 対応メディア形式（拡張子・コーデック等）
-- ファイル参照の内部表現
-- メディア種別の判定方法
+- **正式な再生対応形式一覧**（コーデック・コンテナ。rough classification とは別）
 - 出力先選択ライブラリ / API
+- iOS 実機での選択・アクセス挙動の追加検証
