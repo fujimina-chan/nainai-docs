@@ -154,7 +154,40 @@ Playback Service（MediaKitPlaybackService）は Service lifetime で次を所�
 
 `media_kit_video` 2.0.1 では、VideoController に独立した dispose API がないことを確認済み。Player.dispose 側の lifecycle を使用する。
 
-**VideoController の Presentation への受け渡し境界は Phase 2-2 時点では未確定。** 確定済み仕様のように扱わない。
+**Ownership:** VideoController の ownership は `MediaKitPlaybackService`。Presentation は dispose しない。
+
+### VideoController Presentation 境界（Phase 2-4 確定）
+
+```text
+MediaKitPlaybackService
+    owns VideoController
+        ↓
+Application Composition Root
+        ↓
+MediaKitVideoSurface
+        ↓
+media_kit Video Widget
+```
+
+方針:
+
+- `MediaController` / `MediaState` / `MediaPlaybackService`（abstract）には VideoController や media_kit 型を公開しない
+- `MediaKitPlaybackService` concrete class のみに read-only `VideoController` getter を設ける
+- MediaScreen は Concrete Playback Service へ依存しない
+- Video Surface を Composition Root から注入する
+- Presentation は Native VideoController を Widget Test で必須にしない（Fake Surface 注入で状態 UI を検証可能）。テスト実装の細部は本文書の対象外
+
+### Application Composition（Phase 2-4）
+
+`NainaiApp` は StatefulWidget。Application lifetime で次を 1 組だけ生成する（Widget build ごとには生成しない）。
+
+- `FileSelectorMediaSelectionService`
+- `MediaKitPlaybackService`
+- `MediaController`
+
+`NainaiApp.dispose` では `MediaController.dispose()` を呼ぶ。
+
+MediaController が MediaPlaybackService の dispose まで担当するため、Playback Service を Application 側から二重 dispose しない。
 
 ### Load（実装確認）
 
@@ -267,7 +300,6 @@ OutputLocationSelection（技術未選定）…… 出力先のみ
 - **正式な再生対応形式一覧**（Selection の rough classification 用拡張子とは別。再生保証ではない）
 - 出力先選択ライブラリ / API
 - ファイル書き出し方式
-- VideoController の Presentation 受け渡し境界
 - 状態管理ライブラリ
 - ルーティングライブラリ
 - 分割処理技術

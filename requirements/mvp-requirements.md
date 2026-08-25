@@ -119,9 +119,8 @@ UI 大枠・Design System は [phase2-ui.md](../design/phase2-ui.md) / [design-s
 - **正式な再生対応形式一覧**（コーデック・コンテナ）。Selection の MediaKind rough classification 用拡張子は [media-selection.md](../design/media-selection.md) を参照。再生保証ではない
 - 出力先選択ライブラリ / API（ファイル出力は MVP 対象外）
 - 音量調整の粒度（スライダー範囲等）
-- Banner / Notification の消失条件
+- Banner / Notification の消失条件（自動消失時間・clear API は未定）
 - 状態管理ライブラリ / ルーティングライブラリ
 - 分割処理技術 / FFmpeg 採用有無
 - backend 技術 / DB
-- フォントの Flutter 導入方法
-- 初期 Lavender Accent の詳細 Token 一覧
+- フォントの Flutter 正式 Font Asset 導入（Phase 2 は fallback）

@@ -22,6 +22,8 @@ Phase 2 は、初期 MVP の再生体験に対する **UI 大枠設計** であ�
 
 Stitch 成果物の保存場所・版管理・正本性は [design-system.md](design-system.md) の「Stitch 成果物の扱い」を正とする。
 
+Layout breakpoint（800 logical pixels）等の Token は [design-system.md](design-system.md) を正とする。
+
 ## 2. Phase 2 に存在する Playback UI 操作
 
 | 操作 / 表示 | 備考 |
@@ -31,17 +33,32 @@ Stitch 成果物の保存場所・版管理・正本性は [design-system.md](de
 | Play / Pause | 同一 Primary Control を状態で切替 |
 | Stop | 位置を 00:00 へ戻す（詳細は media-playback.md） |
 | Seek | 任意位置へ移動 |
-| Current Time | Monospace 時間表示 |
-| Total Duration | Monospace 時間表示 |
+| Current Time / Total Duration | Timecode（通常 `MM:SS`、1 時間以上 `HH:MM:SS`） |
 | Volume | アプリ内再生音量 |
 | Repeat OFF | 終端後は stopped（00:00） |
 | Repeat ONE | 現在 Media を繰り返す。Active は Accent |
 
 これ以外の Playback 操作を Phase 2 UI へ追加しない。
 
+### Phase 2 で禁止する操作（例）
+
+- Previous / Next / Shuffle / Playlist / Settings
+- Fullscreen / Subtitle / 10 秒移動
+- Repeat ALL
+- Mute（Phase 2 必須ではない）
+- Fake metadata / Fake waveform / Dynamic Visualizer
+
 ## 3. 画面は Media State から描画する
 
 最低限の状態: `unselected` / `loading` / `ready` / `playing` / `paused` / `stopped` / `error`
+
+| 状態 | UI |
+|------|-----|
+| `unselected` | Empty State + Select File。Playback controls なし |
+| `loading` | Progress + File Name。Playback controls なし |
+| `ready` / `playing` / `paused` / `stopped` | Media + controls |
+| Blocking `error` | Error + Select Another File。Playback controls なし |
+| Non-blocking error | 現在 Media UI を維持 + Banner / notification |
 
 Audio / Video 種別は別途 Media 情報として保持し、UI は状態と種別から描画する。
 
@@ -51,7 +68,6 @@ Audio / Video 種別は別途 Media 情報として保持し、UI は状態と�
 
 Desktop では Media 種別と状態に応じて、次の Control 構造を採用する。
 
-「Bottom Control Area」と「Floating Control Bar」の二者択一は解消済みである。  
 **Video は Floating Control Bar、Audio は画面下部の固定 Control Panel** とする。
 
 ### 4.1 Video（Desktop）
@@ -59,7 +75,8 @@ Desktop では Media 種別と状態に応じて、次の Control 構造を採�
 動画領域下部に **Floating Control Bar** を配置する。
 
 - Control Bar は動画 Content を主役とし、動画全体を大きく確保したまま操作できる構造にする
-- Phase 2 では Control Bar を **常時表示**する
+- Phase 2 では Control Bar を **常時表示**する（auto-hide なし）
+- restrained glass 表現を用いる
 
 Phase 2 ではまだ実装しない（将来改善）:
 
@@ -69,11 +86,8 @@ Phase 2 ではまだ実装しない（将来改善）:
 
 Floating Control Bar に含む Phase 2 操作:
 
-- Current Time
-- Seek
-- Total Duration
-- Play / Pause
-- Stop
+- Current Time / Seek / Total Duration
+- Play / Pause / Stop
 - Repeat OFF / ONE
 - Volume
 - Select Another File
@@ -86,48 +100,23 @@ Phase 2 対象外の操作を追加しない。
 
 Video のように Media へ Overlay する必要はない。
 
-Control Panel に含む操作:
+Fake waveform / visualizer は置かない。
 
-- Current Time
-- Seek
-- Total Duration
-- Play / Pause
-- Stop
-- Repeat OFF / ONE
-- Volume
-- Select Another File
+Control Panel に含む操作は Video Floating Control Bar と同範囲（第 2 節）。
 
-### 4.3 Unselected（Desktop）
+### 4.3 Unselected / Loading / Blocking Error（Desktop）
 
 Playback Control Bar / Panel を表示しない。
 
-Select File を主役とした Empty State のみ表示する。
+| 状態 | 表示 |
+|------|------|
+| Unselected | Select File を主役とした Empty State |
+| Loading | Loading Progress + File Name |
+| Blocking Error | Error + Select Another File |
 
 大量の Disabled Control は表示しない。
 
-### 4.4 Loading（Desktop）
-
-Playback Control Bar / Panel は表示しない。
-
-表示するもの:
-
-- Loading Spinner
-- File Name
-- Loading 状態
-
-内部的には Playback 操作を Controller 側で拒否する。
-
-### 4.5 Blocking Error（Desktop）
-
-Playback Control Bar / Panel は表示しない。
-
-表示:
-
-- Error 状態
-- ユーザー向け簡潔な Error Message
-- Select Another File
-
-### 4.6 Non-blocking Error（Desktop）
+### 4.4 Non-blocking Error（Desktop）
 
 現在の Video / Audio UI をそのまま維持する。
 
@@ -135,44 +124,46 @@ Playback Control Bar / Panel は表示しない。
 
 現在 Media の Control Bar / Panel を消したり、Blocking Error 画面へ切り替えたりしない。
 
-## 5. Unselected（共通）
+## 5. Banner（Non-blocking）
 
-主役: **Select File**
+Phase 2 現在:
 
-- 大量の Disabled Controls を表示しない
-- Navigation を表示しない
-- OS File Picker を起動する
-- File Picker のキャンセルは Error ではない
+- Controller の `error` が存在する間表示する **state-driven banner**
+- 自動消失時間は **未定**（3 秒 / 5 秒等を勝手に確定しない）
+- clear 専用 UI / API も未確定
+
+色は Semantic Warning（[design-system.md](design-system.md)）。
+
+## 6. Unselected / Loading（共通）
+
+Unselected:
+
+- 主役は **Select File**
+- Navigation なし、Playback controls なし
+- OS File Picker。Cancel は Error ではない
 - Drag & Drop は Phase 2 対象外
-- Playback Control Bar / Panel は表示しない（第 4.3 節）
 
-## 6. Loading（共通）
+Loading:
 
-表示:
-
-- Spinner
-- File Name
-- Loading 状態
-
-Play / Pause / Stop / Seek は操作不可とする。
-
-UI 側だけでなく Controller 側でも操作を拒否する。
-
-Playback Control Bar / Panel は表示しない（第 4.4 節）。
+- Progress + File Name
+- Play / Pause / Stop / Seek は操作不可（UI + Controller）
+- Playback controls なし
 
 ## 7. Video
 
 Video を画面の主役とする。
 
+### Video Fit
+
+内容全体を確認可能な fit を基本とする。Phase 2 実装では **`BoxFit.contain`**。装飾目的の crop を行わない。
+
 ### Desktop
 
-第 4.1 節の Floating Control Bar を用いる。
+第 4.1 節の Floating Control Bar（常時表示・restrained glass）を用いる。
 
 ### Mobile
 
-Desktop Floating Control Bar をそのまま縮小しない。
-
-縦方向構成を基本とする:
+Desktop Floating Control Bar をそのまま縮小しない。縦方向構成:
 
 ```text
 Video Area
@@ -195,7 +186,7 @@ Select Another File
 表示:
 
 - Static Audio Placeholder
-- File Name
+- File Name（ユーザーから確認可能であること。Media Area 内に出す場合、同名の二重表示は必須ではない。「Audio では filename 不要」とはしない）
 - Audio（種別の明示）
 
 ### Desktop
@@ -204,7 +195,7 @@ Select Another File
 
 ### Mobile
 
-Desktop を単純縮小しない。Video と同様の縦方向構成を基本とする:
+Desktop を単純縮小しない。縦方向構成:
 
 ```text
 Audio Area（Static Audio Placeholder）
@@ -222,79 +213,55 @@ Select Another File
 
 Phase 2 では次を表示しない。
 
-- Artist / Album
-- Codec / Bitrate / Resolution
+- Artist / Album / Codec / Bitrate / Resolution
 - その他未取得 Metadata
-
-実際の音声へ同期していない Fake Dynamic Visualizer は禁止する。
+- Fake Dynamic Visualizer
 
 ## 9. Error UI
 
 ### Blocking Error
 
-現在の Media を再生できない場合。
-
 - 例文言: `Could not load this file.`
-- 操作: Select Another File
-- Playback Control Bar / Panel は表示しない
+- Select Another File
+- Playback controls なし
 - 技術的 Exception は表示しない
-- 原因が確定していない場合、`Unsupported format` / `File corrupted` などを断定しない
-- 色: Semantic Error（Red）
+- 原因未確定時に `Unsupported format` / `File corrupted` を断定しない
+- 色: Semantic Error
 
 ### Non-blocking Error
 
-現在 Media を維持可能な場合、Media 画面を Error 画面へ置き換えない。
-
-- 現在の Video / Audio UI（Control Bar / Panel を含む）を維持する
-- その上に Notification / Banner を表示する
-- 色: Semantic Warning（Amber）
+- 現在 Media UI を維持 + Banner（第 5 節）
+- 色: Semantic Warning
 
 ### Unknown Error
 
-将来的に問題報告機能へ接続予定とする。
+将来の問題報告機能へ接続予定。Phase 2 では Report ボタンを実装しない。
 
-Phase 2 では Report ボタンを実装しない。報告方法・送信情報等は将来別途設計する。
+## 10. Windows / Mobile Chrome
 
-## 10. Windows
+- Windows: OS 標準 Window Chrome。独自 Minimize / Maximize / Close を作らない
+- Android / iOS: Desktop 用 Window Control を出さない。Mobile 向け縦構成（第 7・8 節）
 
-Phase 2 では **OS 標準 Window Chrome** を使用する前提とする。
+## 11. Play / Pause / Repeat の見た目
 
-アプリ独自の Minimize / Maximize / Close を UI Component として作らない。
-
-## 11. Android / iOS
-
-Desktop 用 Window Control を表示しない。
-
-Mobile 向けに Layout を最適化する（第 7・8 節）。Desktop Floating Control Bar をそのまま縮小しない。
-
-## 12. Play / Pause の Primary Control
-
-同一の Primary Control を状態によって切り替える。
-
-| 状態 | 表示 |
-|------|------|
+| 状態 | Primary Control |
+|------|-----------------|
 | `ready` / `paused` / `stopped` | Play |
 | `playing` | Pause |
 
-Pause 時は Position を保持する（[media-playback.md](media-playback.md)）。
+- Repeat ONE Active は Accent（`accent-primary`）
+- Repeat ALL は Phase 2 UI に出さない
 
-## 13. Repeat の見た目
+## 12. 将来 Mode との境界
 
-- Phase 2 は OFF / ONE のみ
-- Repeat ONE Active は Accent Color で示す
-- Repeat ALL は将来機能であり Phase 2 UI に出さない
+Phase 2 UI に次を先行表示しない。
 
-## 14. 将来 Mode との境界
+- Editor Navigation / Playlist / Library / Settings
+- Timeline / Equalizer / Compressor 等
 
-Design System は Player / Editor / Timeline 等へ拡張可能とするが、Phase 2 UI に次を先行表示しない。
+## 13. 未確定事項
 
-- Editor Navigation
-- Playlist / Library / Settings
-- Timeline / Equalizer / Compressor 等の未実装 Mode
-
-## 15. 未確定事項
-
-- Volume UI の具体的コントロール形状（スライダー等）
+- Volume UI の具体的コントロール形状（スライダー等）の細部
 - Static Audio Placeholder の具体ビジュアル
-- Banner / Notification の正確な配置・消失条件
-- Desktop / Mobile の Breakpoint 値
+- Banner の自動消失時間・clear 専用 UI / API
+- 正式 Font Asset 導入後の見た目調整

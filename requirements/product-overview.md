@@ -119,6 +119,6 @@ Design Persona は **Professional Creative Media Tool**。Theme は Base / Accen
 - 状態管理ライブラリ / ルーティングライブラリ
 - backend 技術 / API / DB / 認証 / クラウド同期
 - 各プラットフォーム間でのデータ共有方法
-- フォントの Flutter 導入方法・Accent 詳細 Token
+- フォントの Flutter 正式 Font Asset 導入（Phase 2 は fallback。Token は [design-system.md](../design/design-system.md)）
 
 入力ファイル選択・再生の技術選定は [media-technology.md](../architecture/media-technology.md) を参照。

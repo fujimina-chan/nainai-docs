@@ -53,7 +53,7 @@ Local Media Playback
 |------|------|
 | Local Media File | 端末内ストレージに保存されている音声・動画ファイル |
 | Operating System File Picker | Windows / Android / iOS それぞれの OS が提供するファイル選択 UI |
-| MediaController | Selection / Playback Service を束ね、immutable MediaState を状態正本とする（Phase 2-3 実装済み。詳細は [media-playback.md](../design/media-playback.md)） |
+| MediaController | Selection / Playback Service を束ね、immutable MediaState を状態正本とする（Phase 2-3）。Video Surface は Composition Root から注入（Phase 2-4。詳細は [media-technology.md](media-technology.md)） |
 | Local Media Playback | Flutter アプリ内でのメディア再生（`media_kit` 系。詳細は [media-technology.md](media-technology.md)） |
 
 ## メディア技術（確定）

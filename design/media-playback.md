@@ -370,8 +370,7 @@ Phase 2 / MVP の再生には含めない。
 ## 18. 未確定事項
 
 - **正式な再生対応形式一覧**（rough classification とは別。Selection 側の拡張子表は再生保証ではない）
-- Seek / Volume の時間精度・粒度（UI）
-- Banner / Notification の消失条件
-- **VideoController の Presentation への受け渡し境界**（Phase 2-4 UI 未実装。確定済み仕様のように扱わない）
+- Seek / Volume の時間精度・粒度（UI 操作細部）
+- Banner の自動消失時間・clear 専用 UI / API
 - 状態管理ライブラリ / ルーティングライブラリ
 - 分割処理技術 / FFmpeg 採用有無

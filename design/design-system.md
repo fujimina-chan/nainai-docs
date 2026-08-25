@@ -140,9 +140,11 @@ Phase 2 初期プリセット: **Midnight Navy**
 - Focus
 - Repeat ONE Active
 
-初期 Accent: **Lavender 系**
+Phase 2 初期プリセットの Accent は **Lavender 系**（Exact Token は第 5 節）。
 
-将来、Purple / Blue / Cyan / Green / Orange などへ変更可能にする。
+これは Phase 2 時点の **初期 / default Preset** であり、nainai 全体へ永久固定する Brand Color ではない。
+
+将来、ユーザーが Accent Color を選択可能にする（Purple / Blue / Cyan / Green / Orange 等へ変更可能）。現時点ではテーマ選択 UI 自体は作らない。
 
 ### 4.3 Semantic Palette
 
@@ -154,18 +156,18 @@ Accent とは独立させる。
 - Warning
 - Success
 
-ユーザーが Accent を変更しても、Error / Warning の意味色が変化してはいけない。
+ユーザーが Accent を変更しても、Error / Warning / Success の意味色が変化してはいけない。**Semantic を Accent へ置換しない。**
 
 Phase 2 のエラー表示色:
 
 | 種別 | 色の方針 |
 |------|----------|
-| Blocking Error | Red（Semantic Error） |
-| Non-blocking Error | Amber（Semantic Warning） |
+| Blocking Error | Semantic Error |
+| Non-blocking Error | Semantic Warning |
 
-## 5. 初期 Midnight Navy Design Token
+## 5. 初期 Midnight Navy Design Token（Phase 2）
 
-現在の基準値（Base）:
+### 5.1 Base Palette（変更なし）
 
 | Token | 値 |
 |-------|-----|
@@ -179,18 +181,37 @@ Phase 2 のエラー表示色:
 | `on-surface` | `#dbe2fd` 相当 |
 | `on-surface-variant` | `#c7c5d0` 相当 |
 
-初期 Accent は Lavender 系とする（具体値は Theme / Design Token で管理する）。
-
 `#020617` など、旧 Stitch 成果物だけに存在する別背景色を、新たな正式 Token として採用しない。
+
+### 5.2 Accent Palette（Phase 2-4 正式確定）
+
+Phase 2 初期 / default Preset の Exact Token:
+
+| Token | 値 | 役割 |
+|-------|-----|------|
+| `accent-primary` | `#8083FF` | Primary interactive accent（Active / Selected / Focus / Seek Progress / Repeat ONE Active / Primary Action 等） |
+| `accent-emphasis` | `#C0C1FF` | 明るい Accent 表現・強調用 |
+
+Widget ごとに Hex を散在させず、Theme / Design Token 経由で使用する。
+
+永久固定 Brand Color ではない。将来の Accent 選択方針は第 4.2 節を維持する。
+
+### 5.3 Semantic Palette（Exact Token・Accent と独立）
+
+| Token | 値 |
+|-------|-----|
+| `semantic-error` | `#FF4D4D` |
+| `semantic-warning` | `#F59E0B` |
+| `semantic-success` | `#4ADE80` |
 
 ## 6. Typography
 
-| 用途 | 方針 |
-|------|------|
-| 通常 UI | Inter |
-| 時間表示（Current Time / Total Duration / Timecode） | Geist Mono 相当の Monospace |
+| 用途 | Design intention | Phase 2 Flutter 実装状態 |
+|------|------------------|--------------------------|
+| 通常 UI | Inter | platform sans-serif fallback（正式 Font Asset 未同梱） |
+| 時間表示（Current Time / Total Duration / Timecode） | Geist Mono 相当の Monospace | monospace fallback + tabular figures |
 
-時間表示の対象は次を含む。いずれも Geist Mono 相当の Monospace とする。
+時間表示の対象:
 
 - Current Time
 - Total Duration
@@ -198,7 +219,16 @@ Phase 2 のエラー表示色:
 
 時間表示は、数字が変化しても横幅が揺れないこと。
 
-Flutter 実装時に、Web 用 Google Fonts コードをそのままコピーしない。フォント導入方法は Flutter 実装段階で別途決定する。
+**現在 Inter / Geist Mono を Font Asset として読み込んでいるとはしない。** 将来、正式 Font Asset を導入する余地を残す。
+
+Flutter 実装時に、Web 用 Google Fonts コードをそのままコピーしない。
+
+### Timecode 表示形式（Phase 2）
+
+| 条件 | 形式 |
+|------|------|
+| 通常 | `MM:SS` |
+| 1 時間以上 | `HH:MM:SS` |
 
 ## 7. Spacing
 
@@ -216,7 +246,17 @@ Flutter 実装時に、Web 用 Google Fonts コードをそのままコピーし
 
 Mobile の操作領域は最低 **44×44** を基準とする。
 
-## 8. Shape
+## 8. Layout Breakpoint
+
+Phase 2 Flutter 実装の Desktop / Mobile layout breakpoint:
+
+| Token | 値 |
+|-------|-----|
+| `layout-breakpoint-desktop` | **800** logical pixels |
+
+Device 種別判定ではなく **layout breakpoint** とする。Magic Number として Widget へ散在させず Design / Layout Token として管理する。将来 UI 再設計で変更可能。
+
+## 9. Shape
 
 | 対象 | 方針 |
 |------|------|
@@ -228,7 +268,7 @@ Mobile の操作領域は最低 **44×44** を基準とする。
 
 通常 CTA を無条件で Pill 型にしない。
 
-## 9. マジックナンバー方針
+## 10. マジックナンバー方針
 
 実装時に、次を意味なく Widget 内へ直接散在させない。
 
@@ -244,7 +284,7 @@ Mobile の操作領域は最低 **44×44** を基準とする。
 
 ただし、定数を 1 ファイルへ無秩序に全部集めない。
 
-## 10. 将来拡張
+## 11. 将来拡張
 
 Design System は将来的に次へ拡張可能にする。
 
@@ -259,10 +299,10 @@ Design System は将来的に次へ拡張可能にする。
 
 ただし Phase 2 UI へ未実装機能を先行表示しない。
 
-## 11. 未確定事項
+## 12. 未確定事項
 
-- 初期 Lavender Accent の正式な Color Token 一覧（色相・段階）
-- フォントの Flutter への導入方法・ライセンス確認手順
-- テーマ選択 UI（将来）
+- 正式 Font Asset の導入方法・ライセンス確認手順（Inter / Geist Mono）
+- テーマ選択 UI / Palette Picker（将来）
 - Base / Accent の追加 Preset 一覧
-- Animation Duration / Breakpoint の具体 Token 値
+- Animation Duration の具体 Token 値
+- Banner の自動消失時間
