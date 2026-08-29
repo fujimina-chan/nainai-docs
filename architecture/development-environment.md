@@ -107,6 +107,62 @@ Product Requirement ではない。ローカル開発・ビルド環境上の制
 
 個人のセキュリティ製品名・ユーザー名など、不要な個人環境情報は本正本に残さない。
 
+### Windows: Seek Slider の AXTree 更新エラー（Resolved）
+
+**Status:** Resolved（Phase 2-5 Windows 実機検証で修正・確認済み）
+
+#### 問題
+
+Windows 実機で Seek Slider 表示後、次のエラーが繰り返し発生した。
+
+```text
+Failed to update ui::AXTree,
+error: Nodes left pending by the update: N
+```
+
+アプリ Crash ではないが、Accessibility tree 更新エラーが継続した。
+
+#### 確認環境
+
+| 項目 | 値 |
+|------|-----|
+| OS | Windows 10 Pro 10.0.19045 |
+| Framework | Flutter 3.47.0 stable |
+| Runtime / SDK | Dart 3.13.0 |
+
+#### nainai での原因
+
+Seek Slider が duration 未取得時は `onChanged = null`（disabled）だった。duration 取得後に `onChanged = callback` となり enabled へ遷移していた。
+
+最小 Flutter Project でも disabled → enabled だけで同じ AXTree エラーを再現した。
+
+#### nainai での対策
+
+Seek Slider を Widget lifetime 中、常に enabled 状態に維持する。
+
+duration 未取得中も `onChanged` は non-null とし、callback 内で `hasDuration == false` なら return する。これにより disabled → enabled 遷移を発生させない。
+
+Slider の `max` を `1` → `duration` へ変更する挙動は維持する。最小再現 Test では、enabled 固定状態での max 変更だけでは AXTree エラーは再現しなかった。
+
+#### 実機確認（修正後）
+
+- Audio 選択直後: AXTree エラーなし
+- Seek hover: AXTree エラーなし
+- Tooltip 表示: AXTree エラーなし
+- Playing 中: AXTree エラーなし
+- Seek 正常
+- Play / Pause / Stop 正常
+- Volume 正常
+- Repeat 操作正常
+
+#### 補足
+
+確認環境では Slider の disabled → enabled 遷移が直接再現トリガーだった。Flutter Engine 内部の upstream root cause は未特定である。Flutter 全バージョン・Windows 全環境で必ず発生するものではない。
+
+#### 詳細・汎用手順
+
+詳細な最小再現、Test Matrix、汎用 Workaround、Accessibility 上の注意、Flutter 更新時の再確認手順は [engineering-knowledge](https://github.com/fujimina-chan/engineering-knowledge/blob/main/troubleshooting/flutter/windows/slider-axtree-disabled-to-enabled.md) を参照。
+
 ## 関連文書
 
 - [repository-structure.md](repository-structure.md) … リポジトリ責務と開発運用
