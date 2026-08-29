@@ -63,6 +63,13 @@ OS のファイル選択 UI（file_selector）
 
 従来の Audio / Video 別フィルターを廃止し、対応している Audio / Video を単一の **Media** フィルターで表示する。
 
+| Locale | OS Picker 表示名 |
+|--------|------------------|
+| ja | メディア |
+| en | Media |
+
+Picker ラベルは [localization.md](localization.md) §4 の ARB 正本に従う。Service 層へ `BuildContext` は注入せず、`MediaTypeGroupLabelProvider` 経由で UI 層から localized 文字列を渡す。
+
 MediaKind の判定は従来どおり **MIME 優先 → 拡張子 fallback** とする（§7）。対応 extension 一覧も §7 の rough classification 表を正とする。
 
 ## 5. 単一ファイル選択

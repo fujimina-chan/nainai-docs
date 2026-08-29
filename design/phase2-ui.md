@@ -24,6 +24,15 @@ Stitch 成果物の保存場所・版管理・正本性は [design-system.md](de
 
 Layout breakpoint（800 logical pixels）等の Token は [design-system.md](design-system.md) を正とする。
 
+### Localization（Phase A）
+
+| 項目 | 状態 |
+|------|------|
+| Localization 基盤 / 日本語標準表示 / `en` resource | 実装済み（[localization.md](localization.md)） |
+| Settings 言語切替 / Locale 永続化 / システム言語自動追徰 | 未実装 |
+
+§4.2 の Desktop Audio 固定 Control Panel は **UI 設計方針**。実装・実機検証完了扱いにしない（[localization.md](localization.md) §7）。
+
 ## 2. Phase 2 に存在する Playback UI 操作
 
 | 操作 / 表示 | 備考 |
@@ -218,9 +227,11 @@ Phase 2 では次を表示しない。
 
 ## 9. Error UI
 
+UI 文言は [localization.md](localization.md) の ARB 正本に従う（標準表示: 日本語）。
+
 ### Blocking Error
 
-- 例文言: `Could not load this file.`
+- 例（ja）: 「ファイルを読み込めませんでした。」（ARB `loadFailed`）
 - Select Another File
 - Playback controls なし
 - 技術的 Exception は表示しない
@@ -249,6 +260,7 @@ Phase 2 では次を表示しない。
 | `playing` | Pause |
 
 - Repeat ONE Active は Accent（`accent-primary`）
+- Repeat ONE の日本語: **「この曲を繰り返し再生」**（[localization.md](localization.md)）
 - Repeat ALL は Phase 2 UI に出さない
 
 ## 12. Volume UI（Phase 2-5 確定）

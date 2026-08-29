@@ -80,7 +80,7 @@ MVP のクライアントは **Flutter** で実装します。
 | 現在時間 | 再生中の現在位置（経過時間）を表示する |
 | 総時間 | メディアファイルの総再生時間を表示する |
 | 音量 | 再生音量を調整する（整数 % 表示・Volume アイコン Mute / Unmute 含む） |
-| Repeat OFF / ONE | 終端時の繰り返し。ALL は将来機能 |
+| Repeat OFF / ONE | 終端時の繰り返し。ALL は将来機能。ONE の日本語は [localization.md](../design/localization.md) |
 
 UI 大枠・Design System は [phase2-ui.md](../design/phase2-ui.md) / [design-system.md](../design/design-system.md) を正とする。
 

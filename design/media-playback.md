@@ -237,6 +237,7 @@ Phase 2 の Repeat は `off` / `one` のみ。
 
 - `toggleRepeatMode`: off → one / one → off
 - Repeat ONE Active は Accent Color で示す（[design-system.md](design-system.md)）
+- Repeat ONE の日本語 Tooltip / Semantics: **「この曲を繰り返し再生」**（[localization.md](localization.md) §3）
 - File switch / Stop 後も **アプリ起動中は保持**
 - Repeat ALL は将来機能（Phase 2 では禁止）
 - completed を受けて手動で `seek` → `play` する Repeat は行わない
@@ -305,7 +306,7 @@ dispose 後に `notifyListeners` しない Guard を持つ。
 
 現在の Media を再生できない場合。Media 画面を Error 表示へ切り替えてよい。
 
-例文言: `Could not load this file.`
+例: Blocking Error の日本語は ARB `loadFailed`（「ファイルを読み込めませんでした。」）等。文言正本は [localization.md](localization.md)。
 
 - Select Another File を提供する
 - 技術的 Exception は表示しない

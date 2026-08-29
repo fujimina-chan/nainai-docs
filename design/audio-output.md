@@ -2,10 +2,11 @@
 
 将来実装する **設定 → オーディオ → 音声出力デバイス** 機能の詳細設計正本。
 
-本ドキュメントは **docs のみ** を対象とし、実装は含まない。UI レイアウト全体は将来の Settings 設計に委ね、ここでは機能・責務・プラットフォーム差分を定める。
+**Phase A（共通 Model / Service 抽象 / Capability）** は nainai-client に実装済み（commit `4a34d85`）。本ドキュメントは設計正本として Phase A 以降の実装状態も記録する。Settings UI・platform 実装・永続化は未実装。
 
-関連（相互リンクは統合工程で追加予定）:
+関連:
 
+- [UI Localization](localization.md)
 - [メディア再生](media-playback.md)
 - [Phase 2 UI](phase2-ui.md)
 - [メディア技術選定](../architecture/media-technology.md)
@@ -36,7 +37,7 @@
 - Equalizer / 空間オーディオ等の拡張
 - 設定画面全体の Presentation 確定
 - 設定永続化 library の選定
-- 実装コード
+- Phase B 以降の platform 実装・Settings UI
 
 ## 2. Windows 設計（確定候補）
 
@@ -234,7 +235,7 @@ Android と同様、物理 device ID の永続保存を前提にしない。`mod
 
 ## 5. 共通ドメインモデル
 
-Package 非依存のドメインモデル候補:
+Package 非依存のドメインモデル。**Phase A 実装済み**（`lib/features/settings/models/`）。
 
 ```dart
 enum AudioOutputSelectionMode {
@@ -245,23 +246,44 @@ enum AudioOutputSelectionMode {
 
 ```dart
 class AudioOutputPreference {
-  final AudioOutputSelectionMode mode;
-  final String? deviceId;
-  final String? deviceLabel;
+  // factory AudioOutputPreference.systemDefault()
+  // factory AudioOutputPreference.specificDevice({ required deviceId, deviceLabel? })
 }
 ```
 
-| フィールド | Windows | Android / iOS |
-|------------|---------|---------------|
-| `mode` | `systemDefault` / `specificDevice` | 原則 `systemDefault` |
-| `deviceId` | `AudioDevice.name` | 通常 `null` |
-| `deviceLabel` | 表示用キャッシュ（`description`） | 通常 `null` |
+### 5.1 Preference ルール（Phase A 確定）
 
-`deviceLabel` は UI 表示の補助キャッシュ。復元時は `deviceId` を正本とし、一覧から label を再解決する。再解決不能ならフォールバック（§2.5）。
+| mode | deviceId | deviceLabel |
+|------|----------|-------------|
+| `systemDefault` | `null` | `null` |
+| `specificDevice` | **必須**（trim 後 non-empty） | 任意（表示キャッシュ） |
+
+- `specificDevice` 作成時、`deviceId` の前後空白は **trim して保存**
+- trim 後が空文字の `deviceId` は **禁止**（`ArgumentError`）
+- 復元時は `deviceId` を正本とし、一覧から label を再解決する。再解決不能ならフォールバック（§2.5）
+
+| フィールド | Windows（将来） | Android / iOS |
+|------------|-----------------|---------------|
+| `mode` | `systemDefault` / `specificDevice` | 原則 `systemDefault` |
+| `deviceId` | 実装時 `AudioDevice.name` にマップ | 通常 `null` |
+| `deviceLabel` | 表示用キャッシュ | 通常 `null` |
+
+### 5.2 AudioOutputDevice（Phase A 確定）
+
+```dart
+class AudioOutputDevice {
+  final String id;    // identity key
+  final String label; // display metadata only
+}
+```
+
+- **identity は `id` のみ**。`==` / `hashCode` も `id` 基準
+- 同一 `id` で `label` が変わっても同一 device として扱う
+- Windows 実装時、`id` は media_kit `AudioDevice.name` にマップする想定（Phase B）
 
 ## 6. Platform Capability
 
-UI がプラットフォーム名を直接 `if` 分岐するより、Capability に基づいて表示を切り替える。
+UI がプラットフォーム名を直接 `if` 分岐するより、Capability に基づいて表示を切り替える。**Phase A 実装済み**（`AudioOutputCapabilities`）。
 
 ```dart
 class AudioOutputCapabilities {
@@ -272,8 +294,8 @@ class AudioOutputCapabilities {
 }
 ```
 
-| Capability | Windows | Android | iOS |
-|------------|---------|---------|-----|
+| Capability | Windows（設計） | Android | iOS |
+|------------|-----------------|---------|-----|
 | `supportsDeviceEnumeration` | true | false | false |
 | `supportsDirectDeviceSelection` | true | false | false |
 | `supportsSystemRoutePicker` | false | true | true |
@@ -283,18 +305,19 @@ Service / UI は Capability を参照し、未サポート method 呼び出し�
 
 ## 7. Service 境界
 
-### 7.1 AudioOutputService（推奨抽象）
+### 7.1 AudioOutputService（抽象）
 
-`MediaPlaybackService` とは **分離** する。
+`MediaPlaybackService` とは **分離** する。**Phase A 実装済み**（`lib/features/settings/services/audio_output_service.dart`）。
 
 ```dart
 abstract class AudioOutputService {
   AudioOutputCapabilities get capabilities;
 
+  List<AudioOutputDevice> get availableDevices;
   Stream<List<AudioOutputDevice>> get availableDevicesStream;
-  Stream<AudioOutputPreference> get currentSelectionStream;
 
   AudioOutputPreference get currentSelection;
+  Stream<AudioOutputPreference> get currentSelectionStream;
 
   Future<void> selectSystemDefault();
   Future<void> selectDevice(String deviceId);
@@ -304,14 +327,20 @@ abstract class AudioOutputService {
 }
 ```
 
+**snapshot + stream の対称構造** を採用（`availableDevices` / `availableDevicesStream`、`currentSelection` / `currentSelectionStream`）。
+
 全 platform がすべての method を実装できる前提にしない。未サポートは `UnsupportedError` または no-op + Capability で UI 側が非表示とする。
 
-`AudioOutputDevice`（ドメイン型）:
+### 7.1.1 Phase A 依存境界
 
-| フィールド | 説明 |
-|------------|------|
-| `id` | Windows: `AudioDevice.name` |
-| `label` | ユーザー向け表示名 |
+Phase A 共通層は次へ **依存しない**:
+
+- `media_kit`
+- Flutter UI（`BuildContext` 等）
+- Localization
+- Platform 判定（`dart:io` 等）
+
+`MediaController` への追加もなし。Persistence も未実装。platform 具象実装は Phase B 以降。
 
 ### 7.2 MediaPlaybackService との関係 — 3 案比較
 
@@ -514,11 +543,11 @@ enum AudioOutputErrorType {
 
 ## 11. Localization
 
-別 worktree で導入中の Localization 基盤を使用する前提。**日本語直書きは禁止予定。**
+[localization.md](localization.md) の ARB 基盤を使用する。**日本語直書きは禁止。**
 
-### 11.1 翻訳キー候補
+### 11.1 Settings 向け翻訳キー候補（未実装）
 
-Flutter gen-l10n 向けの **camelCase** キー候補。`.` 区切りは使用しない。
+Flutter gen-l10n 向け **camelCase** キー候補。`.` 区切りは使用しない。Settings UI 実装 Phase（Phase C 等）で ARB へ追加する。
 
 | キー | 用途 | 例（ja 参考） |
 |------|------|---------------|
@@ -535,7 +564,7 @@ Flutter gen-l10n 向けの **camelCase** キー候補。`.` 区切りは使用�
 | `audioOutputDeviceUnavailable` | 消失通知 | 選択していた出力デバイスが利用できなくなりました |
 | `audioRoutePickerFailed` | picker 失敗 | 出力先の選択画面を表示できませんでした |
 
-本表は設計候補。実際の Localization 実装レーンと最終統合時にキー名を照合する。
+実際の Localization 実装レーン（[localization.md](localization.md)）と最終統合時にキー名を照合する。
 
 ## 12. 実装フェーズ分割
 
@@ -551,15 +580,15 @@ Phase A ──▶ Phase G (永続化)
 Phase B + G ──▶ Windows 起動時復元完成
 ```
 
-| Phase | 内容 | 依存 |
-|-------|------|------|
-| **A** | 共通 Model / `AudioOutputService` 抽象 / Capability | なし |
-| **B** | Windows `MediaKitPlaybackService` が `AudioOutputService` も実装 | A |
-| **C** | Windows Settings UI | A, B |
-| **D** | Windows hot unplug / fallback | B |
-| **E** | Android platform output picker | A |
-| **F** | iOS `AVRoutePickerView` 組み込み | A |
-| **G** | 設定永続化（`AudioOutputPreference`） | A |
+| Phase | 内容 | 状態 | 依存 |
+|-------|------|------|------|
+| **A** | 共通 Model / `AudioOutputService` 抽象 / Capability | **Implemented** | なし |
+| **B** | Windows `MediaKitPlaybackService` が `AudioOutputService` も実装 | 未実装 | A |
+| **C** | Windows Settings UI | 未実装 | A, B |
+| **D** | Windows hot unplug / fallback | 未実装 | B |
+| **E** | Android platform output picker | 未実装 | A |
+| **F** | iOS `AVRoutePickerView` 組み込み | 未実装 | A |
+| **G** | 設定永続化（`AudioOutputPreference`） | 未実装 | A |
 
 ### 並行可能範囲
 
@@ -568,6 +597,17 @@ Phase B + G ──▶ Windows 起動時復元完成
 | B + E + F | A 完了後、プラットフォーム実装は独立 |
 | C + D | B 完了後、UI と fallback は部分並行可 |
 | G | A 完了後いつでも開始。B と組み合わせで Windows 復元完成 |
+
+### Phase A 検証（client）
+
+Phase A は Localization 統合後の nainai-client 上で次を確認済み（2026-08-30 時点）:
+
+| コマンド | 結果 |
+|----------|------|
+| `flutter analyze` | No issues found |
+| `flutter test` | 145 tests PASS |
+
+client commit: `4a34d85` — `feat: 音声出力デバイスの共通基盤を追加`
 
 ## 13. 未確定事項
 

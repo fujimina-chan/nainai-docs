@@ -29,6 +29,8 @@ nainai-docs/
 ├── design/                            # 機能設計・UI
 │   ├── media-selection.md             # 端末内メディアファイル選択
 │   ├── media-playback.md              # 音声・動画のアプリ内再生
+│   ├── localization.md                # UI Localization（gen-l10n / ARB）
+│   ├── audio-output.md                # 音声出力デバイス選択
 │   ├── phase2-ui.md                   # Phase 2 再生 UI 方針
 │   └── design-system.md               # Design System / Theme
 ├── architecture/                      # アーキテクチャ
@@ -53,6 +55,8 @@ nainai-docs/
 | [mvp-requirements.md](requirements/mvp-requirements.md) | 初期 MVP の対象機能と対象外 |
 | [media-selection.md](design/media-selection.md) | 端末内メディアファイル選択の機能設計 |
 | [media-playback.md](design/media-playback.md) | 音声・動画のアプリ内再生の機能設計 |
+| [localization.md](design/localization.md) | UI Localization（gen-l10n / ARB / 日本語標準表示） |
+| [audio-output.md](design/audio-output.md) | 音声出力デバイス選択（Phase A 実装済み） |
 | [phase2-ui.md](design/phase2-ui.md) | Phase 2 再生 UI（Desktop / Mobile・状態別） |
 | [design-system.md](design/design-system.md) | Design Persona / Theme / Token / Typography |
 | [system-overview.md](architecture/system-overview.md) | システム構成とデータフロー |
