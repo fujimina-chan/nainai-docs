@@ -20,7 +20,7 @@ nainai の Windows 上での Flutter 開発では、**リポジトリパスを A
 ### 現在の標準配置
 
 ```text
-D:\fyna\dev\nainai\
+E:\fyna\dev\nainai\
 ├── nainai-infra
 ├── nainai-backend
 ├── nainai-client
@@ -77,24 +77,53 @@ Flutter **3.47.0** / Windows 環境において、標準配置（ASCII 実パス
 
 ジャンクションは使用していない。
 
+## Phase 2-5 Windows 実機検証（進捗）
+
+Phase 2-5 全体の完了を意味しない。以下は Windows 実機で実装・確認済みの項目のみ。
+
+| 項目 | Status | 正本 |
+|------|--------|------|
+| Volume 整数 % 表示 | 完了 | [phase2-ui.md](../design/phase2-ui.md) §12 / [media-playback.md](../design/media-playback.md) §9 |
+| Audio / Video 単一 Media フィルター | 完了 | [media-selection.md](../design/media-selection.md) §4.1 |
+| Volume アイコン Mute / Unmute | 完了 | [media-playback.md](../design/media-playback.md) §9 |
+| Volume 低域特性の原因調査 | 完了 | [media-playback.md](../design/media-playback.md) §9 / [media-technology.md](media-technology.md) |
+| mpv Volume 逆 3 乗補正（`MediaKitVolumeMapper`） | 完了 | [media-technology.md](media-technology.md) |
+| Volume 10% 付近でほぼ無音 | **Windows: Resolved / 実機確認済み**（Android / iOS は補正実装共通・実機確認未実施） | [media-playback.md](../design/media-playback.md) §9 |
+| Seek Slider AXTree 更新エラー | **Resolved** | 下記 Known Issues |
+| Windows 実機確認（上記含む再生操作） | 完了 | 各正本 |
+
+未確認・未完了の Phase 2-5 項目がある場合は、本表に載せない限り完了扱いにしない。
+
 ## Known Issues（開発環境）
 
-Product Requirement ではない。ローカル開発・ビルド環境上の制約として記録する。恒久解決策は未決定。
+Product Requirement ではない。ローカル開発・ビルド環境上の制約として記録する。未解決の項目については恒久解決策は未決定。
 
-### Windows: exFAT と plugin symlink
+### Windows: exFAT と plugin symlink（Resolved）
 
-現在の主要開発配置は `D:\fyna\dev\nainai\` である。
+**Status:** Resolved
 
-当該 `D:` が exFAT の場合、Flutter plugin が必要な Windows build で plugin symlink 作成時に `ERROR_INVALID_FUNCTION` となることを確認済み。
+#### 問題
+
+旧作業場所 `D:\fyna\dev\nainai\` の `D:` が exFAT だったため、Flutter Windows plugin が必要な build で plugin symlink 作成時に `ERROR_INVALID_FUNCTION` となることを確認した。
 
 - Phase 2 実装コードの compile error ではない
 - filesystem 環境制約である
 
-**重要:**
+#### 対策
 
-- これを解消するために **C: へ作業コピーする運用を正式手順として採用しない**
-- nainai の作業場所は **D: を維持**する
-- Windows build 環境の正式解決策は別途決定する
+正式作業場所を NTFS の `E:\fyna\dev\nainai\` へ移行した。
+
+E: 上で次が成功済み:
+
+- `flutter pub get`
+- `flutter analyze`
+- `flutter test`
+- `flutter build windows`
+
+#### 補足
+
+- 旧 `D:` を移行検証完了まで削除しない運用は、本問題の解決とは別事項
+- これを解消するために **C: へ作業コピーする運用を正式手順として採用しない**（調査時の方針。現行標準は E: NTFS）
 
 ### Android: 依存取得時の SSL / PKIX
 

@@ -67,7 +67,7 @@ Platform 確認事項（**当該バージョンで確認した範囲**。将来�
 
 | プラットフォーム | 確認事項 |
 |------------------|----------|
-| Windows | `extensions` が必要 |
+| Windows | `extensions` が必要。Picker は単一 **Media** フィルター（[media-selection.md](../design/media-selection.md) §4.1） |
 | Android | `extensions` または `mimeTypes` |
 | iOS | UTI（`uniformTypeIdentifiers`）指定が必要 |
 
@@ -239,14 +239,40 @@ C open
 
 nainai Stop は `pause` + `seek(Duration.zero)`。**`Player.stop()` は使わない**（Media unload のため）。詳細は [media-playback.md](../design/media-playback.md)。
 
-### Volume scale（実装確認）
+### Volume scale / MediaKitVolumeMapper（Phase 2-5 確定）
 
 | 境界 | スケール |
 |------|----------|
 | nainai 内部 | `0.0`～`1.0` |
 | media_kit 1.2.6 | `0`～`100` |
 
-変換は Playback Service 境界で行う。scale を UI / MediaState へ漏らさない。
+変換は Playback Service 境界で `MediaKitVolumeMapper` が行う。scale を UI / MediaState へ漏らさない。
+
+Windows 実機で、従来の線形 `×100` 変換では mpv softvol の 3 乗特性により UI 10% 付近がほぼ無音となる現象を確認した。nainai 側の値渡しバグではない。
+
+旧:
+
+```text
+nainai volume → ×100 → mpv volume → gain = (volume / 100)^3
+```
+
+新仕様（逆 3 乗補正）:
+
+```text
+mediaKitVolume = 100 × cubeRoot(nainaiVolume)
+nainaiVolume = (mediaKitVolume / 100)^3
+```
+
+| nainaiVolume | mpv 適用後（目標） |
+|--------------|-------------------|
+| 0.0 | 0.0 |
+| 0.1 | 約 0.1 |
+| 0.5 | 約 0.5 |
+| 1.0 | 1.0 |
+
+製品仕様上の目的・Mute 挙動は [media-playback.md](../design/media-playback.md) §9 を正とする。本補正は「人間の聴感を数学的に線形化する」仕様ではない。
+
+`MediaKitVolumeMapper` は全プラットフォーム共通実装。Windows 実機での 10% 低音量問題は **Resolved / 実機確認済み**。Android / iOS では補正実装は共通だが、**実機確認は未実施**。
 
 ### Repeat（Package 対応）
 

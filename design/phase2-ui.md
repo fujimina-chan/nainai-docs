@@ -34,7 +34,7 @@ Layout breakpoint（800 logical pixels）等の Token は [design-system.md](des
 | Stop | 位置を 00:00 へ戻す（詳細は media-playback.md） |
 | Seek | 任意位置へ移動 |
 | Current Time / Total Duration | Timecode（通常 `MM:SS`、1 時間以上 `HH:MM:SS`） |
-| Volume | アプリ内再生音量 |
+| Volume | アプリ内再生音量（Slider + 整数 % 表示 + アイコン Mute / Unmute） |
 | Repeat OFF | 終端後は stopped（00:00） |
 | Repeat ONE | 現在 Media を繰り返す。Active は Accent |
 
@@ -45,7 +45,6 @@ Layout breakpoint（800 logical pixels）等の Token は [design-system.md](des
 - Previous / Next / Shuffle / Playlist / Settings
 - Fullscreen / Subtitle / 10 秒移動
 - Repeat ALL
-- Mute（Phase 2 必須ではない）
 - Fake metadata / Fake waveform / Dynamic Visualizer
 
 ## 3. 画面は Media State から描画する
@@ -252,16 +251,25 @@ Phase 2 では次を表示しない。
 - Repeat ONE Active は Accent（`accent-primary`）
 - Repeat ALL は Phase 2 UI に出さない
 
-## 12. 将来 Mode との境界
+## 12. Volume UI（Phase 2-5 確定）
+
+Volume コントロールは Slider + 整数パーセント表示 + Volume アイコンで構成する。
+
+| 要素 | 内容 |
+|------|------|
+| Slider | `MediaState.volume`（`0.0`～`1.0`）を操作する |
+| パーセント表示 | Slider 近傍に整数 %（例: `0%` / `50%` / `100%`）を表示する。Volume 専用の表示状態は持たない |
+| Volume アイコン | Volume > 0 時は Volume アイコン、Volume = 0 時は Volume Off アイコン。click で Mute / Unmute（機能仕様は [media-playback.md](media-playback.md) §9） |
+
+## 13. 将来 Mode との境界
 
 Phase 2 UI に次を先行表示しない。
 
 - Editor Navigation / Playlist / Library / Settings
 - Timeline / Equalizer / Compressor 等
 
-## 13. 未確定事項
+## 14. 未確定事項
 
-- Volume UI の具体的コントロール形状（スライダー等）の細部
 - Static Audio Placeholder の具体ビジュアル
 - Banner の自動消失時間・clear 専用 UI / API
 - 正式 Font Asset 導入後の見た目調整

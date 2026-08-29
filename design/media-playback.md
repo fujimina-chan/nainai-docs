@@ -49,7 +49,7 @@
 | Play / Pause | 同一 Primary Control を状態で切替 |
 | Stop | 再生を止め、位置を先頭（00:00）へ戻す。Media はロードされたまま |
 | Seek | 再生位置を任意位置へ変更する |
-| Volume | アプリ内の再生音量を変更する |
+| Volume | アプリ内の再生音量を変更する（% 表示・Mute / Unmute 含む。下記 §9） |
 | Repeat OFF / ONE | Phase 2 のリピート（下記） |
 
 これ以外の Playback 操作を Phase 2 に追加しない（Previous / Next / Shuffle / 10 秒送り戻し / Fullscreen / Subtitle 等は対象外）。
@@ -190,16 +190,41 @@ MediaController でも `0 <= position <= duration` に clamp する（負値は 
 
 - Phase 2 では **アプリ側の再生音量** を変更できる
 - **OS 全体の音量設定を変更する機能ではない**
-- ミュート専用ボタンは Phase 2 の必須操作に含めない
+- Volume Slider 近傍に現在音量を **整数パーセント**（例: `0%` / `20%` / `50%` / `100%`）で表示する。表示正本は `MediaState.volume`（`0.0`～`1.0`）。Volume 専用の表示状態は持たない
+- Volume アイコンで Mute / Unmute できる（UI 配置は [phase2-ui.md](phase2-ui.md)）
 
 | 境界 | スケール |
 |------|----------|
 | nainai 内部（MediaController / MediaState / UI） | `0.0`～`1.0`（MediaVolume で clamp） |
 | media_kit 1.2.6 | `0`～`100` |
 
-変換は Playback Service 境界で行い、media_kit の Volume scale を Controller / UI へ漏らさない。
+変換は Playback Service 境界で行い、media_kit の Volume scale を Controller / UI へ漏らさない。mpv softvol の 3 乗特性を相殺する補正の詳細は [media-technology.md](../architecture/media-technology.md) を正とする。
 
 Media 未選択でも Session 設定として Volume 変更可能とする。
+
+### Mute / Unmute（Phase 2-5 実装済み）
+
+Volume アイコンを操作可能とする。
+
+| 状態 | アイコン | click 時 |
+|------|----------|----------|
+| Volume > 0 | Volume | `0%` へ（Mute） |
+| Volume = 0 | Volume Off | 最後の非ゼロ Volume へ復元（Unmute） |
+
+- Mute 状態の正本は **`MediaState.volume == 0`** とする。公開された `isMuted` 等の二重状態は持たない
+- 最後の非ゼロ Volume は Controller 内部の補助値として保持する
+- Slider から直接 `0%` にした場合も Mute として扱い、アイコンから以前の非ゼロ Volume へ復元可能
+- Mute 中に Slider を `0` より大きくすれば自然に Unmute となる
+
+### Volume 低域特性（Phase 2-5・Windows: Resolved / 実機確認済み）
+
+Windows 実機で「UI 10% 付近でほぼ無音」となる現象を調査した結果、nainai 側の値渡しバグではなく、mpv softvol の 3 乗特性との組み合わせによるものと確認した。
+
+`MediaKitVolumeMapper` による逆 3 乗補正後、Windows 実機で 0 / 1 / 5 / 10 / 20 / 30 / 50 / 75 / 100% を確認し、操作感に問題なし。**Windows 実機では本問題を Resolved として扱う。**
+
+Android / iOS では `MediaKitVolumeMapper` による補正実装は共通だが、**実機確認は未実施**。
+
+これは「人間の聴感を数学的に線形化する」仕様ではない。目的は **mpv 内部の 3 乗変換を相殺し、nainai のユーザー Volume と mpv 適用後の振幅比を整合させること** である。
 
 ## 10. Repeat
 
@@ -370,7 +395,6 @@ Phase 2 / MVP の再生には含めない。
 ## 18. 未確定事項
 
 - **正式な再生対応形式一覧**（rough classification とは別。Selection 側の拡張子表は再生保証ではない）
-- Seek / Volume の時間精度・粒度（UI 操作細部）
 - Banner の自動消失時間・clear 専用 UI / API
 - 状態管理ライブラリ / ルーティングライブラリ
 - 分割処理技術 / FFmpeg 採用有無

@@ -55,8 +55,15 @@ OS のファイル選択 UI（file_selector）
 | 動画（`MediaKind.video`） | 対象 |
 
 - OS のファイル選択 UI で音声・動画を選べる形にする
+- **Phase 2-5 以降**: Audio / Video 別フィルターは廃止し、対応形式を **単一の Media フィルター** で表示する（詳細は §4.1）
 - **正式な再生対応形式一覧（official supported formats）は未確定**。再生保証でもない
 - MediaKind の rough classification 用拡張子は後述。Package API 詳細は [media-technology.md](../architecture/media-technology.md)
+
+### 4.1 OS File Picker フィルター（Phase 2-5 確定）
+
+従来の Audio / Video 別フィルターを廃止し、対応している Audio / Video を単一の **Media** フィルターで表示する。
+
+MediaKind の判定は従来どおり **MIME 優先 → 拡張子 fallback** とする（§7）。対応 extension 一覧も §7 の rough classification 表を正とする。
 
 ## 5. 単一ファイル選択
 

@@ -63,8 +63,7 @@ MVP のクライアントは **Flutter** で実装します。
 
 | 機能 | 説明 |
 |------|------|
-| 音声ファイル選択 | OS 標準のファイル選択 UI を通じて、端末内の音声ファイルを選ぶ |
-| 動画ファイル選択 | OS 標準のファイル選択 UI を通じて、端末内の動画ファイルを選ぶ |
+| メディアファイル選択 | OS 標準のファイル選択 UI を通じて、端末内の音声・動画ファイルを **単一 Media フィルター** から選ぶ（詳細は [media-selection.md](../design/media-selection.md) §4.1） |
 | 選択ファイル情報表示 | 選択したファイルの情報（ファイル名等）をアプリ内に表示する |
 | 別ファイルへの変更 | 再生中または停止中に、別のファイルを選択して切り替える |
 
@@ -80,7 +79,7 @@ MVP のクライアントは **Flutter** で実装します。
 | シーク | 再生位置を任意の時点へ移動する |
 | 現在時間 | 再生中の現在位置（経過時間）を表示する |
 | 総時間 | メディアファイルの総再生時間を表示する |
-| 音量 | 再生音量を調整する |
+| 音量 | 再生音量を調整する（整数 % 表示・Volume アイコン Mute / Unmute 含む） |
 | Repeat OFF / ONE | 終端時の繰り返し。ALL は将来機能 |
 
 UI 大枠・Design System は [phase2-ui.md](../design/phase2-ui.md) / [design-system.md](../design/design-system.md) を正とする。
@@ -93,7 +92,7 @@ UI 大枠・Design System は [phase2-ui.md](../design/phase2-ui.md) / [design-s
 |------|------|
 | Previous / Next / Shuffle | Phase 2 禁止 |
 | Repeat ALL | 将来機能 |
-| Playlist / Library / Settings | 将来機能 |
+| Playlist / Library / Settings | 将来機能（Settings 内の言語・音声出力デバイス等は [product-overview.md](product-overview.md) を参照） |
 | Drag & Drop | Phase 2 対象外（OS File Picker のみ） |
 | Fullscreen / Subtitle / 10 秒送り戻し | Phase 2 禁止 |
 | Dynamic Audio Visualizer | 実音声非同期の疑似表現を含む。禁止 |
@@ -118,7 +117,6 @@ UI 大枠・Design System は [phase2-ui.md](../design/phase2-ui.md) / [design-s
 
 - **正式な再生対応形式一覧**（コーデック・コンテナ）。Selection の MediaKind rough classification 用拡張子は [media-selection.md](../design/media-selection.md) を参照。再生保証ではない
 - 出力先選択ライブラリ / API（ファイル出力は MVP 対象外）
-- 音量調整の粒度（スライダー範囲等）
 - Banner / Notification の消失条件（自動消失時間・clear API は未定）
 - 状態管理ライブラリ / ルーティングライブラリ
 - 分割処理技術 / FFmpeg 採用有無
