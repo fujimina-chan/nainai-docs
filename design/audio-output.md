@@ -12,6 +12,7 @@
 関連:
 
 - [Windows Settings UI（Phase C）](audio-output-settings.md)
+- [アプリ共通 Settings 基盤](settings.md)
 - [UI Localization](localization.md)
 - [メディア再生](media-playback.md)
 - [Phase 2 UI](phase2-ui.md)
@@ -480,7 +481,7 @@ Phase C（Windows Settings UI）の詳細設計 — `AudioOutputController` / `A
 
 #### 推奨: 独立 `AudioOutputController`（Phase C で実装予定）
 
-[audio-output-settings.md](audio-output-settings.md) §4–§6 に Phase C 確定設計あり。将来 Settings 画面実装時に `SettingsController` が compose する。最終名称は未確定（§13 参照）。
+[audio-output-settings.md](audio-output-settings.md) §4–§6 に Phase C 確定設計あり。Settings Shell は [settings.md](settings.md)。`SettingsController`（共通 AppSettings）と `AudioOutputController` は **兄弟関係** で compose する（settings.md §4.5）。
 
 ## 9. Application Composition
 
@@ -692,8 +693,8 @@ client commit: `c3239f3` — `feat: Windows音声出力デバイス切り替え�
 | Android API ごとの fallback | minSdk 24 を前提に実装時決定 |
 | iOS Flutter embedding 方式 | Platform View 推奨候補だが未確定 |
 | 設定永続化 library | shared_preferences 等は未選定 |
-| 設定画面全体デザイン | Phase 2 UI 外 |
-| `AudioOutputController` / `SettingsController` 最終名称 | Settings 全体設計に依存 |
+| 設定画面全体デザイン | [settings.md](settings.md)（Shell）+ Phase C Section |
+| `SettingsController` / `AudioOutputController` 名称 | [settings.md](settings.md) / [audio-output-settings.md](audio-output-settings.md) で設計確定 |
 | Windows 再生中切替の実機保証 | 実装後検証必須 |
 
 ## 14. 将来機能との境界

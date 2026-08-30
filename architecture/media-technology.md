@@ -217,6 +217,15 @@ Presentation 詳細は [phase2-ui.md](../design/phase2-ui.md) §4.1 を正とす
 | body | Bottom Panel 除く領域で Media 中央配置 |
 | narrow | Windows でも Mobile layout に **フォールバックしない** |
 
+### Application Composition（共通 Settings — 設計確定・未実装）
+
+共通 Settings 基盤の詳細は [settings.md](../design/settings.md) §13–§14。
+
+- `SettingsRepository` + `SettingsController` を **Application lifetime** で 1 組生成（`build()` ごとに生成しない）
+- `SettingsController` は `AppSettings`（初回設定: `showTooltips`）の正本
+- `AudioOutputController` と **兄弟関係**（SettingsController が Audio Output 責務を吸収しない）
+- Tooltip Policy は App ルート subtree から `SettingsController` を参照し、Media 画面へ即時反映
+
 ### Load（実装確認）
 
 ```text

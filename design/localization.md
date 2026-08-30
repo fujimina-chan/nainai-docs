@@ -30,7 +30,8 @@ nainai-client に導入済みの UI 文字列 Localization 基盤を定義する
 | システム Locale 追従 | **未実装** |
 | 言語切替 UI | **未実装** |
 | Locale 永続保存 | **未実装** |
-| LocaleController / SettingsController | **未実装** |
+| LocaleController | **未実装** |
+| `SettingsController`（`AppSettings` / Tooltip 等） | **[設計確定・未実装](settings.md)** — Locale 用 Controller とは別物 |
 
 ## 3. 実装済み UI 文言（日本語）
 
@@ -71,9 +72,9 @@ OS File Picker の Media フィルター表示名（`XTypeGroup.label`）も Loc
 
 Service 層へ `BuildContext` は注入しない。`MediaTypeGroupLabelProvider`（label provider）によって UI 層から localized 文字列を渡す設計を採用済み（[media-selection.md](media-selection.md) §4.1）。
 
-## 5. 音声出力 Settings 向けキー
+## 5. Settings 向けキー
 
-[audio-output.md](audio-output.md) §11 に設計候補として整理した camelCase キー（`settingsTitle` / `audioOutputDeviceTitle` 等）は **未実装**。Settings UI 実装 Phase で ARB へ追加する。
+共通 Settings（General / Tooltip 等）のキー設計は [settings.md](settings.md) §8。音声出力 Settings 向けキーは [audio-output-settings.md](audio-output-settings.md) §16 および [audio-output.md](audio-output.md) §11。いずれも **未実装**。Settings UI 実装 Phase で ARB へ追加する。
 
 ## 6. 検証（client）
 
@@ -91,5 +92,6 @@ client commit: `7e7c245` — `feat: UIのLocalization基盤と日本語表示を
 - 日本語 / English 切替 UI
 - システム言語に合わせる設定
 - Locale 永続保存
-- LocaleController / SettingsController
-- Settings 共通 UI / Tooltip 表示 ON/OFF（Common Settings 別レーンで設計中）
+- LocaleController
+- `SettingsController`（[settings.md](settings.md) — Locale Controller とは別）
+- Tooltip 表示 ON/OFF — [settings.md](settings.md) **Core Design Complete** / **未実装**（現在 client は Tooltip 常時有効）

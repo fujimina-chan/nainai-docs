@@ -2,10 +2,11 @@
 
 Audio Output **Phase C** — Windows 向け Settings 内「音声出力デバイス選択 UI」の実装前詳細設計正本。
 
-Service / platform 抽象の正本は [audio-output.md](audio-output.md)。Localization 基盤は [localization.md](localization.md)。Visual Token は [design-system.md](design-system.md)。
+Service / platform 抽象の正本は [audio-output.md](audio-output.md)。Localization 基盤は [localization.md](localization.md)。Visual Token は [design-system.md](design-system.md)。**Settings Shell / 共通 preference 基盤** は [settings.md](settings.md)。
 
 関連:
 
+- [アプリ共通 Settings 基盤](settings.md)
 - [音声出力デバイス選択](audio-output.md)
 - [UI Localization](localization.md)
 - [Design System](design-system.md)
@@ -21,7 +22,7 @@ Service / platform 抽象の正本は [audio-output.md](audio-output.md)。Local
 
 **Design Complete の範囲:** Controller / State / Composition / Ownership / Settings Section / Selection / Error / Localization / Accessibility / Testing。
 
-**未確定（Phase C subsystem の Visual Design 完全確定ではない）:** Settings Launcher 物理配置 — **Launcher placement design pending**（§14）。fixed Bottom Control は client `68ff1b4` で **Implemented**。
+**未確定（Phase C subsystem の Visual Design 完全確定ではない）:** Settings Launcher 物理配置 — **Launcher placement design pending**（§14）。fixed Bottom Control は client `68ff1b4` で **Implemented**。共通 Settings Shell / Navigation は [settings.md](settings.md) が正本。
 
 Phase C 実装完了時点でユーザーが Settings から出力デバイスを切り替えられる。**永続化・hot unplug 自動 fallback・Android/iOS UI は含まない。**
 
@@ -204,7 +205,7 @@ NainaiApp
         └─ AudioOutputSettingsSection   ← Phase C
 ```
 
-`SettingsScreen` 全体の Presentation は Phase C 最小スコープとして **Audio Output Section のみ** でもよい。Settings 全体デザインの最終確定は別途。
+Phase C 最小スコープとして **Audio Output Section のみ** でもよい。Settings Shell / General Section / Tooltip は [settings.md](settings.md) が正本。Phase C 実装時は Shell 未完了でも Section 単体開発可（§14）。
 
 ### 6.4 dispose ownership（Phase C 以降 — 設計確定）
 
@@ -453,8 +454,10 @@ Launcher 未確定でも **Audio Output Section 単体** の Widget / Controller
 |------|------|
 | fixed Bottom Control | **Implemented**（`68ff1b4`） |
 | Settings Launcher 配置 | **Launcher placement design pending** |
-| Common Settings / Tooltip ON/OFF | **未実装**（別レーン設計中） |
+| Common Settings / Tooltip ON/OFF | **[Core Design Complete](settings.md)** / **未実装** |
 | Audio Output Settings UI / Controller | Phase C **Design Complete**、実装未着手 |
+
+共通 Settings Shell / Navigation contract の正本は [settings.md](settings.md) §15。
 
 ## 15. Settings 画面を閉じた場合
 
@@ -549,6 +552,6 @@ Service Phase B テスト（device mapping / `selectDevice` 規則等）と **�
 | 項目 | 備考 |
 |------|------|
 | Settings Launcher 物理配置 | §14 — **Launcher placement design pending**（fixed Bottom Control は `68ff1b4` Implemented） |
-| `SettingsController` との compose タイミング | 独立 `AudioOutputController` を Phase C で先行実装可 |
-| Settings 全体 Navigation 構造 | Audio Output Section 以外は Phase C 外 |
+| `SettingsController` との compose タイミング | 独立 `AudioOutputController` を Phase C で先行実装可。[settings.md](settings.md) §4.5 |
+| Settings 全体 Navigation 構造 | Shell / General / Tooltip は [settings.md](settings.md)。Audio Output Section 以外の Phase C 外項目も同書 |
 | Section 内 Banner 自動消失 | [phase2-ui.md](phase2-ui.md) と同様、勝手に秒数確定しない |

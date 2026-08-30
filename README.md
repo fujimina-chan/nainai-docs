@@ -32,6 +32,7 @@ nainai-docs/
 │   ├── localization.md                # UI Localization（gen-l10n / ARB）
 │   ├── audio-output.md                # 音声出力デバイス選択
 │   ├── audio-output-settings.md       # Windows Settings UI（Phase C 設計）
+│   ├── settings.md                    # アプリ共通 Settings 基盤（Tooltip 等）
 │   ├── phase2-ui.md                   # Phase 2 再生 UI 方針
 │   └── design-system.md               # Design System / Theme
 ├── architecture/                      # アーキテクチャ
@@ -59,6 +60,7 @@ nainai-docs/
 | [localization.md](design/localization.md) | UI Localization（gen-l10n / ARB / 日本語標準表示） |
 | [audio-output.md](design/audio-output.md) | 音声出力デバイス選択（Phase A/B 実装済み、Phase C 設計確定） |
 | [audio-output-settings.md](design/audio-output-settings.md) | Windows 音声出力 Settings UI（Phase C 詳細設計） |
+| [settings.md](design/settings.md) | アプリ共通 Settings 基盤（Tooltip ON/OFF 等） |
 | [phase2-ui.md](design/phase2-ui.md) | Phase 2 再生 UI（Windows 固定 Bottom Panel 含む Desktop / Mobile・状態別） |
 | [design-system.md](design/design-system.md) | Design Persona / Theme / Token / Typography |
 | [system-overview.md](architecture/system-overview.md) | システム構成とデータフロー |
