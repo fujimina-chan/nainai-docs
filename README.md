@@ -59,7 +59,7 @@ nainai-docs/
 | [localization.md](design/localization.md) | UI Localization（gen-l10n / ARB / 日本語標準表示） |
 | [audio-output.md](design/audio-output.md) | 音声出力デバイス選択（Phase A/B 実装済み、Phase C 設計確定） |
 | [audio-output-settings.md](design/audio-output-settings.md) | Windows 音声出力 Settings UI（Phase C 詳細設計） |
-| [phase2-ui.md](design/phase2-ui.md) | Phase 2 再生 UI（Desktop / Mobile・状態別） |
+| [phase2-ui.md](design/phase2-ui.md) | Phase 2 再生 UI（Windows 固定 Bottom Panel 含む Desktop / Mobile・状態別） |
 | [design-system.md](design/design-system.md) | Design Persona / Theme / Token / Typography |
 | [system-overview.md](architecture/system-overview.md) | システム構成とデータフロー |
 | [media-technology.md](architecture/media-technology.md) | ファイル選択・再生の技術選定 |

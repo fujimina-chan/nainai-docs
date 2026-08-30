@@ -363,6 +363,8 @@ Phase 2-3 実装: `errorStream` から `playbackFailed` を受け、**MediaContr
 
 必要 UI の配置・Desktop / Mobile 差分は [phase2-ui.md](phase2-ui.md) を正とする。
 
+**Windows（Implemented `68ff1b4`）:** Playback Controls は `Scaffold.bottomNavigationBar` 固定 Bottom Panel。Audio / Video は Panel 上の残り領域を中央配置。narrow でも Mobile layout へ切り替えない。詳細は [phase2-ui.md](phase2-ui.md) §4.1。
+
 Design Token・色・余白・形状は [design-system.md](design-system.md) を正とする。
 
 ## 15. OS 別の考慮

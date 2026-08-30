@@ -49,6 +49,8 @@ Phase 2 Media 画面および Error UI で、少なくとも以下が Localizati
 | `mute` | ミュート |
 | `unmute` | ミュート解除 |
 | `media` | メディア |
+| `collapsePlaybackControls` | しまう（Bottom Panel collapse Tooltip / Semantics） |
+| `expandPlaybackControls` | 戻す（Bottom Panel expand Tooltip / Semantics） |
 
 Error UI も日本語化済み（`selectionFailed` / `unsupportedMedia` / `loadFailed` 等。一覧は ARB 正本を参照）。
 
@@ -90,4 +92,4 @@ client commit: `7e7c245` — `feat: UIのLocalization基盤と日本語表示を
 - システム言語に合わせる設定
 - Locale 永続保存
 - LocaleController / SettingsController
-- Desktop Audio Bottom Panel（下部固定・折りたたみ）— 別レーン実装予定。**実装済み扱いにしない**
+- Settings 共通 UI / Tooltip 表示 ON/OFF（Common Settings 別レーンで設計中）

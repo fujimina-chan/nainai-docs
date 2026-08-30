@@ -206,6 +206,17 @@ Audio Output Phase C により ownership を移行する。詳細は [audio-outp
 - `MediaController.dispose()` から **`MediaPlaybackService.dispose()` を除去**
 - `NainaiApp.dispose()` 順序: `AudioOutputController` → `MediaController` → `MediaKitPlaybackService`
 
+### MediaScreen — Windows レイアウト（Implemented `68ff1b4`）
+
+Presentation 詳細は [phase2-ui.md](../design/phase2-ui.md) §4.1 を正とする。
+
+| 項目 | 内容 |
+|------|------|
+| Bottom Panel | `Scaffold.bottomNavigationBar` = `DesktopMediaBottomPanel` |
+| 対象 | Windows + Audio / Video + playback 可能 status |
+| body | Bottom Panel 除く領域で Media 中央配置 |
+| narrow | Windows でも Mobile layout に **フォールバックしない** |
+
 ### Load（実装確認）
 
 ```text

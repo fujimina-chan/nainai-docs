@@ -21,7 +21,7 @@ Service / platform 抽象の正本は [audio-output.md](audio-output.md)。Local
 
 **Design Complete の範囲:** Controller / State / Composition / Ownership / Settings Section / Selection / Error / Localization / Accessibility / Testing。
 
-**未確定（Phase C 全体の Visual Design 完全確定ではない）:** Settings Launcher 最終配置 — **Pending fixed Bottom Control integration**（§14）。
+**未確定（Phase C subsystem の Visual Design 完全確定ではない）:** Settings Launcher 物理配置 — **Launcher placement design pending**（§14）。fixed Bottom Control は client `68ff1b4` で **Implemented**。
 
 Phase C 実装完了時点でユーザーが Settings から出力デバイスを切り替えられる。**永続化・hot unplug 自動 fallback・Android/iOS UI は含まない。**
 
@@ -422,18 +422,39 @@ Phase C では **Windows のみ**。Android / iOS 向け Physical Device List UI
 
 **Settings UI 内部** — Audio Output Section の Controller / State / Widget / Error / Localization / Accessibility / Test。
 
-### 14.2 Phase C 実装前に確定が必要（本設計では未確定）
+### 14.2 Settings Launcher 配置（未確定 — 2026-08-30 更新）
 
-**Settings を開く Launcher の最終配置。**
+**前提更新:** Windows 固定 Bottom Control（Audio / Video 共通 Bottom Panel、collapse / compact landscape 等）は client **`68ff1b4` で Implemented**（[phase2-ui.md](phase2-ui.md) §4.1）。「fixed Bottom Control 統合待ち」は **解消** した。
 
-理由: Windows 固定 Bottom Control UI（Audio / Video 固定 Panel、compact landscape 等）は **別 client worktree で未 commit 作業中**。main 統合前のレイアウトを docs で前提固定しない。
+**現 Status:** **Launcher placement design pending** — Launcher の物理配置そのものは **未設計・未実装**。
+
+client `68ff1b4` 時点の Media 画面構造（read-only 確認）:
+
+| 領域 | 内容 |
+|------|------|
+| body 上部 | Non-blocking Banner（該当時のみ） |
+| body 中央 | Audio / Video Media 領域（Bottom Panel 除く残りを中央配置） |
+| `bottomNavigationBar` | `DesktopMediaBottomPanel` — Seek / Transport / Volume / Select Another File（compact 時 folder icon）/ collapse toggle |
+| collapse 時 | Toggle bar のみ（▲ icon） |
+
+**Launcher 候補比較（Phase C 設計入力 — 本日時点で未確定）:**
+
+| 候補 | 概要 | 評価メモ |
+|------|------|----------|
+| **A. Bottom Panel 内** | compact bar 右端または toggle bar 付近に Settings icon | 通常 Windows / narrow Windows / compact landscape expanded で controls と同階層。compact collapsed 時は Panel が toggle のみになり Settings 到達性が下がる |
+| **B. Media Area 上部** | body 上部（Banner 下）に Settings 入口 | Bottom Panel 密度に依存しない。compact landscape でも一貫しうる。Media 領域との視覚的分離が必要 |
+| **C. App-level 独立位置** | Window chrome 近傍・将来 AppBar 等 | OS 標準 Window Chrome 方針（[phase2-ui.md](phase2-ui.md) §10）と整合要検討。Android / iOS では別 Navigation パターンになりうる |
+
+**判断:** 資料と client 構造のみでは **物理配置を確定しない**。Phase C 実装前に、通常 Windows / narrow Windows / compact landscape / Android / iOS の一貫性を評価して Launcher を決定する。
+
+Launcher 未確定でも **Audio Output Section 単体** の Widget / Controller 実装とテストは可能（Modal / 暫定 route）。
 
 | 項目 | 状態 |
 |------|------|
-| Settings Launcher 配置 | **固定 Bottom Control UI の main 統合後** に実機レイアウトを確認して確定 |
-| Bottom Panel / compact / 「しまう」「戻す」等 | **未実装扱い**（docs に Implemented と書かない） |
-
-Phase C 実装開始の prerequisite として、Launcher 未確定であることを明記する。Launcher 未確定でも **Audio Output Section 単体の Widget / Controller 実装とテストは可能** とする（Modal / 暫定 route での開発を妨げない）。
+| fixed Bottom Control | **Implemented**（`68ff1b4`） |
+| Settings Launcher 配置 | **Launcher placement design pending** |
+| Common Settings / Tooltip ON/OFF | **未実装**（別レーン設計中） |
+| Audio Output Settings UI / Controller | Phase C **Design Complete**、実装未着手 |
 
 ## 15. Settings 画面を閉じた場合
 
@@ -517,7 +538,7 @@ Service Phase B テスト（device mapping / `selectDevice` 規則等）と **�
 | Phase | 責務 | 状態 |
 |-------|------|------|
 | **C** | Windows Audio Output Settings subsystem（Controller / Section / wiring / ユーザー操作切替） | **Design Complete** |
-| | Settings Launcher 最終配置 | **Pending** fixed Bottom Control integration |
+| | Settings Launcher 物理配置 | **Launcher placement design pending** |
 | **D** | hot unplug、選択中デバイス消失の **自動** fallback、通知 | 未実装 |
 | **E** | Android platform output picker Settings UI |
 | **F** | iOS route picker Settings UI |
@@ -527,7 +548,7 @@ Service Phase B テスト（device mapping / `selectDevice` 規則等）と **�
 
 | 項目 | 備考 |
 |------|------|
-| Settings Launcher 最終配置 | §14 — Bottom Control UI main 統合後 |
+| Settings Launcher 物理配置 | §14 — **Launcher placement design pending**（fixed Bottom Control は `68ff1b4` Implemented） |
 | `SettingsController` との compose タイミング | 独立 `AudioOutputController` を Phase C で先行実装可 |
 | Settings 全体 Navigation 構造 | Audio Output Section 以外は Phase C 外 |
 | Section 内 Banner 自動消失 | [phase2-ui.md](phase2-ui.md) と同様、勝手に秒数確定しない |

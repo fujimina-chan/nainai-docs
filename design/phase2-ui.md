@@ -31,7 +31,7 @@ Layout breakpoint（800 logical pixels）等の Token は [design-system.md](des
 | Localization 基盤 / 日本語標準表示 / `en` resource | 実装済み（[localization.md](localization.md)） |
 | Settings 言語切替 / Locale 永続化 / システム言語自動追徰 | 未実装 |
 
-§4.2 の Desktop Audio 固定 Control Panel は **UI 設計方針**。実装・実機検証完了扱いにしない（[localization.md](localization.md) §7）。
+§4.1 の Windows 固定 Bottom Panel は **実装済み**（client `68ff1b4`。[localization.md](localization.md) §3）。
 
 ## 2. Phase 2 に存在する Playback UI 操作
 
@@ -72,45 +72,61 @@ Audio / Video 種別は別途 Media 情報として保持し、UI は状態と�
 
 状態の意味と遷移は [media-playback.md](media-playback.md) を正とする。
 
-## 4. Desktop Control Bar（確定）
+## 4. Desktop Playback Controls
 
-Desktop では Media 種別と状態に応じて、次の Control 構造を採用する。
+### 4.1 Windows（Implemented — client `68ff1b4`）
 
-**Video は Floating Control Bar、Audio は画面下部の固定 Control Panel** とする。
+Windows では Audio / Video 共通で、Playback Controls を **`Scaffold.bottomNavigationBar` 固定 Bottom Panel**（`DesktopMediaBottomPanel`）へ配置する。
 
-### 4.1 Video（Desktop）
+| 項目 | 仕様 |
+|------|------|
+| 配置 | `MediaScreen` → `Scaffold.bottomNavigationBar` |
+| 対象 | Windows かつ `ready` / `playing` / `paused` / `stopped` かつ Audio / Video |
+| narrow 幅 | **Mobile layout へ切り替えない**（Windows 専用 body + Bottom Panel を維持） |
+| Media 領域 | Bottom Panel を除く残り領域で Audio / Video を **中央配置**（`_WindowsMediaBody`） |
+| 横スクロール | **なし** |
 
-動画領域下部に **Floating Control Bar** を配置する。
+**Collapse / Expand:**
 
-- Control Bar は動画 Content を主役とし、動画全体を大きく確保したまま操作できる構造にする
-- Phase 2 では Control Bar を **常時表示**する（auto-hide なし）
-- restrained glass 表現を用いる
+| 項目 | 仕様 |
+|------|------|
+| 状態 | Panel 内 presentation-only state（`DesktopMediaBottomPanel`） |
+| compact landscape | **初期 collapsed** |
+| 非 landscape compact | 初期 expanded |
+| collapse icon | `▼`（`keyboard_arrow_down_rounded`） |
+| expand icon | `▲`（`keyboard_arrow_up_rounded`） |
+| 可視ラベル | 「しまう」「戻す」等の **文字ボタンは表示しない** |
+| Tooltip（ja） | しまう / 戻す |
+| Tooltip（en） | Hide / Restore |
+| Semantics | Tooltip 文言を label として維持（ARB: `collapsePlaybackControls` / `expandPlaybackControls`） |
 
-Phase 2 ではまだ実装しない（将来改善）:
+**compact landscape レイアウト:**
 
-- 一定時間後の自動非表示
-- Mouse Hover のみで表示
-- Cursor 移動による表示制御
+| 条件 | Control Bar |
+|------|-------------|
+| compact landscape + expanded + 幅 ≥ 720px | **1 段**（`_SingleRowCompactBar`） |
+| compact landscape + expanded + 幅 < 720px | **最大 2 段** fallback（`_TwoRowCompactBar`） |
+| compact 時 Select Another File | **folder icon**（`Icons.folder_open_rounded`）。Tooltip / Semantics は `selectAnotherFile` |
 
-Floating Control Bar に含む Phase 2 操作:
+Breakpoint 正本: [design-system.md](design-system.md)（desktop 800px、compact landscape `height ≤ 480` かつ `width > height`、single-row min width 720px）。
 
-- Current Time / Seek / Total Duration
-- Play / Pause / Stop
-- Repeat OFF / ONE
-- Volume
-- Select Another File
+**Tooltip 将来仕様:** 現在 Tooltip は常時有効。Settings から Tooltip 表示 ON/OFF を切り替える要件は **未実装**（Common Settings 別レーンで設計中。本書では重複定義しない）。
 
-Phase 2 対象外の操作を追加しない。
+**検証（client `68ff1b4`）:** `flutter analyze` PASS / `flutter test` 214 tests PASS / Windows 実機確認 OK。
 
-### 4.2 Audio（Desktop）
+**Android / iOS:** narrow 含め **既存 Mobile layout を維持**（本変更の対象外）。
 
-画面下部に **固定 Control Panel** を配置する。
+### 4.2 Non-Windows Desktop（設計 — 未統一）
 
-Video のように Media へ Overlay する必要はない。
+macOS / Linux 将来 Desktop 向けの参考設計。Windows では §4.1 を正とする。
 
-Fake waveform / visualizer は置かない。
+**Video:** 動画領域下部に Floating Control Bar（restrained glass、常時表示）。
 
-Control Panel に含む操作は Video Floating Control Bar と同範囲（第 2 節）。
+**Audio（wide Desktop）:** 画面下部固定 Control Panel。
+
+Floating / 固定 Panel に含む操作は第 2 節と同範囲。
+
+Phase 2 ではまだ実装しない（将来改善）: auto-hide、Hover のみ表示、Cursor 移動制御。
 
 ### 4.3 Unselected / Loading / Blocking Error（Desktop）
 
@@ -167,7 +183,8 @@ Video を画面の主役とする。
 
 ### Desktop
 
-第 4.1 節の Floating Control Bar（常時表示・restrained glass）を用いる。
+- **Windows:** §4.1 固定 Bottom Panel。Video は Bottom Panel 上の残り領域に中央配置（`BoxFit.contain` 相当の fit）
+- **Non-Windows Desktop:** §4.2 Floating Control Bar（設計）
 
 ### Mobile
 
@@ -199,7 +216,8 @@ Select Another File
 
 ### Desktop
 
-第 4.2 節の固定 Control Panel を用いる。
+- **Windows:** §4.1。Media 領域中央に Static Audio Placeholder + File Name 等
+- **Non-Windows Desktop:** §4.2 固定 Control Panel（設計）
 
 ### Mobile
 
