@@ -56,9 +56,9 @@ Audio Output **Phase G** — ユーザーが **明示的に選択した** 音声
 ```text
 AudioOutputPreferenceCoordinator
         |
-        +--> AudioOutputController      (borrow)
-        |
-        +--> AudioOutputService         (borrow — readiness 等)
+        +--> AudioOutputController              (borrow)
+        |       |
+        |       +--> AudioOutputService         (Controller が borrow)
         |
         +--> AudioOutputPreferenceRepository
 
@@ -67,7 +67,14 @@ AudioOutputController
 
 AudioOutputPreferenceRepository
         X--> AudioOutputController              (知らない)
+        X--> AudioOutputService                 (知らない)
+
+AudioOutputService
+        X--> AudioOutputPreferenceRepository    (知らない)
+        X--> AudioOutputPreferenceCoordinator   (知らない)
 ```
+
+Coordinator は **readiness 待機** のため `AudioOutputService` を **直接 borrow してよい**（Controller 経由で間接参照のみに **限定しない**）。ただし Service は Repository / Coordinator を **知らない**。
 
 | コンポーネント | 担当 |
 |----------------|------|
@@ -126,47 +133,113 @@ Composition Root
     ↓
 AudioOutputPreferenceCoordinator.initialize()     // Repository.load
     ↓
-applyStartupRestore()                             // readiness → Controller.select*
+applyStartupRestore()                             // initialAvailableDevices → Controller.select*
 ```
 
 restore 成功後は **ユーザー明示操作ではない** → **同じ preference を re-save しない**。
 
-## 6. Device enumeration readiness（client 調査 — 正式決定）
+## 6. Device enumeration readiness（client / media_kit 調査 — 正式決定）
 
 ### 6.1 client `4109a13` read-only 調査
 
 | 項目 | 結果 |
 |------|------|
 | `MediaKitPlaybackService.availableDevices` | `_player.state.audioDevices` の **同期 getter**（L82–86） |
+| `MediaKitPlaybackService.availableDevicesStream` | `_player.stream.audioDevices.map(...)` — **media_kit stream をそのまま expose**（L90–91） |
 | media_kit 初期 `PlayerState.audioDevices` | **`[AudioDevice('auto', '')]` のみ**（`media_kit` 1.2.6 `player_state.dart` L114） |
 | mapper 後 | `auto` 除外 → **`availableDevices == []`** になりうる |
-| 完全一覧 | mpv **`audio-device-list` property event** で **非同期** 到着（`real.dart` L1388–1433） |
+| 完全一覧 | mpv **`audio-device-list` property event** で **非同期** 到着（`real.dart` L1401–1433） |
 | `AudioOutputController` | **subscribe-before-snapshot**（L18–37）。`isLoadingDevices` は production で **常に false**（Settings Section コメント参照） |
 
-### 6.2 正式結論
+### 6.2 media_kit `1.2.6` stream 契約（read-only 確認）
+
+| 確認事項 | 結果 |
+|----------|------|
+| `Player.stream.audioDevices` の実体 | `audioDevicesController.stream.distinct(...)`（`platform_player.dart` L95–97, L379–380） |
+| controller 種別 | **`StreamController<List<AudioDevice>>.broadcast()`** — **replay なし** |
+| 新規 listener への current value emit | **保証なし** — broadcast は **subscribe 以降の event のみ** 受信 |
+| stream への add タイミング | mpv `MPV_EVENT_PROPERTY_CHANGE` で `audio-device-list` 受信時 **のみ**（`real.dart` L1432–1433）。Player 生成時の `[auto]` 初期 state は **stream へ push されない** |
+| 初期 `audio-device-list` event | mpv property observe 後に **非同期** 到着（コメント L1388: idle-active **前** に emit されうる） |
+| subscription 前 event 取り逃し | **ありうる** — Controller が constructor で先に subscribe しても、Coordinator が **別 subscription** で `.first` すると **既 emit event を受け取れない** |
+| `state.audioDevices` が authoritative になる API | **なし** — 同期 getter は常に最新 state を返すが、**「enumeration 完了済み」か「未完了の `[auto]` のみ」かを区別する公式 flag / Future は media_kit に存在しない** |
+
+**Case A 不成立:** `availableDevicesStream.first` 単独方式は **正式採用しない**。新規 listener への replay 保証が **確認できなかった** ため、`.first` は **永久待機** しうる。
+
+### 6.3 正式結論 — 未 ready empty と authoritative empty
 
 起動直後の **`availableDevices == []` を authoritative missing と判断してはならない**。
 
 | 状態 | 意味 |
 |------|------|
-| 同期 snapshot `[]`（auto のみ） | **enumeration 未完了の一時値** になりうる |
-| **first `availableDevicesStream` emission** | Phase G における **authoritative enumeration snapshot** |
+| 同期 snapshot `[]`（auto のみ）かつ readiness **未 complete** | **enumeration 未完了の一時値** |
+| readiness **complete** 後の `[]` | **authoritative empty** — 本当に selectable device なし |
+| readiness **complete** 後の non-empty | **authoritative snapshot** — restore 判定に使用 |
 
-### 6.3 Phase G readiness contract（正式）
+### 6.4 Phase G explicit readiness contract（正式 — Case B）
 
-| 項目 | 決定 |
+`availableDevicesStream.first` は **廃止**。Phase G 実装要件として **`AudioOutputService` に explicit readiness API** を追加する。
+
+```dart
+/// Initial device enumeration が authoritative になった時点の snapshot を返す。
+///
+/// - [AudioOutputCapabilities.supportsDeviceEnumeration] == true:
+///   最初の authoritative enumeration 完了で **一度だけ** complete。
+///   返却 list は [availableDevices] と同型（`auto` 除外済み）。
+///   0 件でも complete する（authoritative empty）。
+/// - supportsDeviceEnumeration == false:
+///   **即 complete**（fake readiness event **禁止**）。
+///
+/// 複数 await は同一 Future を共有し、late awaiter は **即 complete** + キャッシュ snapshot。
+Future<List<AudioOutputDevice>> get initialAvailableDevices;
+```
+
+名称は実装 Phase で `initialDeviceEnumerationReady` 等へ調整可。**意味は固定**: 「initial enumeration が authoritative になった」。
+
+**Concrete 実装方針（`MediaKitPlaybackService`）:**
+
+| 項目 | 方針 |
 |------|------|
-| restore 判定前 | **`await audioOutputService.availableDevicesStream.first`**（または同等の **first authoritative snapshot** Future） |
-| 根拠 | media_kit README / `player.stream.audioDevices.first` パターン |
-| **禁止** | `Future.delayed(500ms)` / arbitrary debounce / 「少し待つ」 |
+| authoritative 信号 | 最初の mpv `audio-device-list` property change を処理した時点 |
+| complete 値 | その時点の mapped `availableDevices`（`auto` 除外） |
+| late awaiter | 既 complete なら **即** キャッシュ snapshot を返す — stream event 取り逃し **不影响** |
+| **禁止** | `Future.delayed` / `Timer` / timeout 後 empty 扱い / `availableDevicesStream.first` への依存 |
 
-first emission **後**:
+Coordinator startup restore は **`await audioOutputService.initialAvailableDevices`** を使用する。**stream timing 単独には依存しない**。
+
+authoritative snapshot **取得後**:
 
 | 条件 | restore 判定 |
 |------|-------------|
 | A.id ∈ devices | **present** → `selectDevice(A.id)` 試行 |
 | A.id ∉ devices | **missing at startup**（§12） |
 | devices が `[]` | **authoritative empty** — specific 復元 **不可**（missing 扱い） |
+
+### 6.5 Android / iOS
+
+| 条件 | 方針 |
+|------|------|
+| `supportsDeviceEnumeration == false` または `supportsPersistentDeviceId == false` | **readiness 待機不要** — `initialAvailableDevices` は即 complete。specific-device restore **自体を行わない** |
+| fake readiness | **禁止** — OS-managed route を enumeration 完了と **偽装しない** |
+
+### 6.6 Enumeration failure
+
+initial enumeration が **完了しない / 失敗** する platform 契約が必要な場合:
+
+| 項目 | 正式 |
+|------|------|
+| startup restore | **適用しない** |
+| runtime | **current route 維持** — Presentation だけ default に **書き換え禁止** |
+| saved Preference | **削除しない** |
+| UI | **Non-blocking restore / enumeration error**（Playback Blocking Error **禁止**） |
+| timeout 偽装 | **禁止** |
+
+### 6.7 Readiness 待機中の race / dispose
+
+| ケース | 方針 |
+|--------|------|
+| readiness 待機中に user selection | **user intent 最優先** — `_restoreGeneration` で stale restore 禁止（§15.4） |
+| readiness Future 完了後 | generation を再確認 — 待機中に user select 済みなら **restore を開始しない** |
+| readiness 待機中に Coordinator dispose | Future 完了後も restore selection / state update / error notification **禁止** |
 
 ## 7. Persistence 技術
 
@@ -184,6 +257,10 @@ first emission **後**:
 ```
 
 `deviceId` = identity。`label` = display cache のみ — **restore 条件に不使用**。UI は `availableDevices` の最新 label を優先。
+
+### 7.1 `AudioOutputService` readiness API（Phase G 追加）
+
+§6.4 の `initialAvailableDevices` を `AudioOutputService` abstract interface に追加する。Controller は **readiness Future を expose しない** — Coordinator が Service を直接 await する。
 
 ## 8. Repository boundary
 
@@ -225,12 +302,15 @@ Coordinator が **`preferredDeviceUnavailable`**（名称は実装 Phase で確�
 2. AudioOutputPreferenceCoordinator.initialize()
        → Repository.load()
        → desiredPreference / lastPersistedPreference 初期化
-3. supportsPersistentDeviceId == false → restore skip（Android / iOS）
-4. await availableDevicesStream.first   // §6.3 authoritative snapshot
-5. saved systemDefault → Controller.selectSystemDefault()
-6. saved specific A かつ A ∈ devices → Controller.selectDevice(A.id)
-7. saved specific A かつ A ∉ devices → §12 missing
-8. select 失敗 → §11 restore failure
+3. capabilities 確認
+4. supportsPersistentDeviceId == false → restore skip（Android / iOS）
+5. await audioOutputService.initialAvailableDevices   // §6.4 authoritative snapshot
+6. authoritative snapshot 取得
+7. saved systemDefault → Controller.selectSystemDefault()
+8. saved specific A かつ A ∈ devices → Controller.selectDevice(A.id)
+9. saved specific A かつ A ∉ devices → §12 missing
+10. select 失敗 → §11 restore failure
+11. enumeration failure → §6.6
 ```
 
 **restore はユーザー明示操作ではない** — **re-save 禁止**。
@@ -335,9 +415,11 @@ A save 失敗、既に desired = B:
 
 | ケース | 方針 |
 |--------|------|
-| load / restore 中の user selection | **user 最優先** |
+| load / restore / **readiness 待機** 中の user selection | **user 最優先** |
 | stale restore completion | route **上書き禁止** |
 | generation | Coordinator 側 **`_restoreGeneration`**（Persistence / startup intent **専用**）。Controller `_selectGeneration` と **役割重複させない** |
+
+readiness 待機中 dispose — §6.7。
 
 ## 16. Platform 境界
 
@@ -387,10 +469,15 @@ NainaiApp
 | ケース |
 |--------|
 | 同期 `[]` だけでは missing **判定しない** |
-| `availableDevicesStream.first` 後に restore 判定 |
+| readiness **未 complete** の `[]` ≠ authoritative empty |
+| **`initialAvailableDevices` complete 後** に restore 判定 |
+| authoritative non-empty → restore |
 | authoritative empty → specific missing |
-| authoritative に device present → restore |
-| **arbitrary delay なし** |
+| stream event を **subscribe 前に取り逃しても** `.first` 永久待機 **しない**（explicit API が complete する） |
+| **arbitrary delay / timeout なし** |
+| readiness 待機中 user selection → user 優先 |
+| readiness 待機中 dispose → post-complete restore **禁止** |
+| enumeration failure → restore skip、preference 保持 |
 
 ### 19.3 Persistence truth
 
@@ -408,9 +495,11 @@ NainaiApp
 
 | Source | 記録 |
 |--------|------|
-| nainai-client `4109a13` `media_kit_playback_service.dart` | 同期 `availableDevices` |
+| nainai-client `4109a13` `media_kit_playback_service.dart` | 同期 `availableDevices` / stream passthrough |
 | nainai-client `4109a13` `audio_output_controller.dart` | subscribe-before-snapshot |
-| `media_kit` 1.2.6 `real.dart` L1388–1433 | `audio-device-list` 非同期 |
+| nainai-client `4109a13` `audio_output_service.dart` | Phase G で `initialAvailableDevices` 追加 |
+| `media_kit` 1.2.6 `platform_player.dart` L379–380 | `audioDevicesController` = **broadcast、replay なし** |
+| `media_kit` 1.2.6 `real.dart` L1401–1433 | `audio-device-list` 非同期 property event |
 | [settings-persistence.md](settings-persistence.md) | storage / durability |
 | [audio-output-hot-unplug.md](audio-output-hot-unplug.md) | Phase D 境界 |
 
@@ -422,5 +511,5 @@ NainaiApp
 | Phase G implementation | **Not Implemented** |
 | Phase D → Preference | **B — runtime only fallback, persist 保持** |
 | Dependency | **Coordinator → Controller + Repository（一方向）** |
-| Readiness | **`availableDevicesStream.first`** |
+| Readiness | **`AudioOutputService.initialAvailableDevices`**（`availableDevicesStream.first` **廃止**） |
 | Truth model | **`desiredPreference` / `lastPersistedPreference`** |
