@@ -61,7 +61,7 @@ Phase C 実装完了時点でユーザーが Settings から出力デバイス�
 
 | Phase | 責務 |
 |-------|------|
-| **D** | hot unplug 検知、選択中デバイス消失時の **自動** System Default fallback、disconnect 通知 |
+| **D** | hot unplug 検知、選択中デバイス消失時の **自動** System Default fallback、disconnect 通知 | [audio-output-hot-unplug.md](audio-output-hot-unplug.md) **Design Complete** / 未実装 |
 | **E** | Android platform output picker UI |
 | **F** | iOS `AVRoutePickerView` UI |
 | **G** | `AudioOutputPreference` 永続化、再起動後復元 |
@@ -322,7 +322,7 @@ availableDevices に device A が存在しない
 - Section 内に **Non-blocking** で「現在選択中の出力デバイスが利用できません」を表示（`audioOutputSelectedDeviceUnavailable`）
 - `currentSelection`（Service 正本）は Phase C では **変更しない** — 表示上 selected なし + 警告
 - ユーザーが System Default または別 device を **明示選択** すれば通常どおり切替
-- **自動 fallback そのものは Phase D**
+- **自動 fallback そのものは Phase D** — 詳細は [audio-output-hot-unplug.md](audio-output-hot-unplug.md)
 
 ## 9. System Default 選択
 
@@ -530,7 +530,7 @@ Service Phase B テスト（device mapping / `selectDevice` 規則等）と **�
 | **C** | Windows Audio Output Settings subsystem（Controller / Section / wiring / ユーザー操作切替） | **Design Complete** |
 | | Settings Launcher physical placement | **Design Complete**（[settings.md](settings.md) §15） |
 | | Settings Launcher implementation | **Not Implemented** |
-| **D** | hot unplug、選択中デバイス消失の **自動** fallback、通知 | 未実装 |
+| **D** | hot unplug、選択中デバイス消失の **自動** fallback、通知 | **Design Complete**（[audio-output-hot-unplug.md](audio-output-hot-unplug.md)）/ **Not Implemented** |
 | **E** | Android platform output picker Settings UI |
 | **F** | iOS route picker Settings UI |
 | **G** | Preference persistence、再起動復元 |

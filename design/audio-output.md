@@ -12,6 +12,7 @@
 関連:
 
 - [Windows Settings UI（Phase C）](audio-output-settings.md)
+- [Windows hot unplug / fallback（Phase D）](audio-output-hot-unplug.md)
 - [アプリ共通 Settings 基盤](settings.md)
 - [UI Localization](localization.md)
 - [メディア再生](media-playback.md)
@@ -580,7 +581,7 @@ Playback Blocking Error（[media-playback.md](media-playback.md) §13）へ統�
 |------|-----|----------|
 | デバイス列挙失敗 | `audioDevices` 取得不可 | **Non-blocking**。Settings UI に警告。再生は継続 |
 | デバイス切替失敗 | `setAudioDevice` 例外 | **Non-blocking**。選択 UI にインラインエラー。前回成功状態を表示 |
-| 選択中デバイス消失 | 保存 ID が一覧にない | Phase D: **自動フォールバック**（§2.5）。Phase C: Non-blocking error |
+| 選択中デバイス消失 | 保存 ID が一覧にない | Phase D: **自動フォールバック**（[audio-output-hot-unplug.md](audio-output-hot-unplug.md)）。Phase C: Non-blocking error |
 | OS route picker 表示失敗 | Android / iOS picker 起動不可 | **Non-blocking**。ボタン付近にエラー表示 |
 
 ### 10.2 UI フィードバック
@@ -648,7 +649,7 @@ Phase B + G ──▶ Windows 起動時復元完成
 | **A** | 共通 Model / `AudioOutputService` 抽象 / Capability | **Implemented** | なし |
 | **B** | Windows `MediaKitPlaybackService` が `AudioOutputService` も実装 | **Implemented** | A |
 | **C** | Windows Settings UI + `AudioOutputController` + Composition wiring | **Design Complete**（Launcher placement: **[Design Complete](settings.md) §15** / implementation **Not Implemented**） | A, B |
-| **D** | Windows hot unplug / fallback | 未実装 | B |
+| **D** | Windows hot unplug / fallback | **Design Complete**（[audio-output-hot-unplug.md](audio-output-hot-unplug.md)）/ **Not Implemented** | B |
 | **E** | Android platform output picker | 未実装 | A |
 | **F** | iOS `AVRoutePickerView` 組み込み | 未実装 | A |
 | **G** | 設定永続化（`AudioOutputPreference`） | 未実装 | A |
