@@ -14,6 +14,7 @@
 - [Windows Settings UI（Phase C）](audio-output-settings.md)
 - [Windows hot unplug / fallback（Phase D）](audio-output-hot-unplug.md)
 - [Android System Route Picker（Phase E）](audio-output-android.md)
+- [iOS System Route Picker（Phase F）](audio-output-ios.md)
 - [アプリ共通 Settings 基盤](settings.md)
 - [UI Localization](localization.md)
 - [メディア再生](media-playback.md)
@@ -282,34 +283,69 @@ OS がルーティングを管理するため、アプリ再起動後もユー�
 
 ## 4. iOS 設計
 
-### 4.1 方針
+Phase F 詳細設計正本: **[audio-output-ios.md](audio-output-ios.md)**（**Design Complete** / **Not Implemented**）。
 
-OS 標準の **`AVRoutePickerView`** を利用する方向とする。
+### 4.1 方針（要約）
+
+media_kit / mpv の device API を **物理出力先一覧 UI として使用しない。**
+
+OS 標準 **`AVRoutePickerView`**（AVKit）を Settings 内 Platform View（`UiKitView`）で embed する。
 
 - アプリ独自に Bluetooth / AirPlay 等の device ID 一覧を構築しない
 - 安定 device ID の永続保存を前提にしない
+- `MPVolumeView` route button / `AVAudioSession` による direct output 切替を route picker 代替に **しない**
 
-### 4.2 UI（概念）
+### 4.2 Phase F 採用 API（確定）
+
+| 項目 | 内容 |
+|------|------|
+| Route picker UI | **`AVRoutePickerView`** — Presentation **`UiKitView`**（`IOSAudioRoutePickerPlatformView`） |
+| Service | **`IOSAudioOutputService`** — capabilities / empty list / systemDefault / command APIs のみ |
+| `supportsSystemRoutePicker` | **`false`** — `openSystemRoutePicker()` 非対応（§6.1） |
+| `openSystemRoutePicker()` | **`UnsupportedError`** |
+| MethodChannel（route open） | **作らない** |
+| 不採用 | `MPVolumeView` route button、route open MethodChannel、hidden view / synthetic tap、media_kit device API |
+
+詳細は [audio-output-ios.md](audio-output-ios.md) §2 / §5 / §7。
+
+### 4.3 nainai-client 現状環境（read-only 調査）
+
+調査日: 2026-08-30
+調査対象: `E:\fyna\dev\nainai\nainai-client`（変更なし）
+
+| 項目 | 値 | 根拠 |
+|------|-----|------|
+| iOS Deployment Target | **15.0** | `ios/Runner.xcodeproj/project.pbxproj` → `IPHONEOS_DEPLOYMENT_TARGET = 15.0` |
+| `AVRoutePickerView` 要件 | iOS 11.0+ | [Apple Documentation](https://developer.apple.com/documentation/avkit/avroutepickerview) |
+| カスタム route Native コード | **未実装** | `AppDelegate.swift` のみ |
+| route 関連 Info.plist key | **なし** | `ios/Runner/Info.plist` |
+
+### 4.4 UI（概念）
 
 ```text
 音声出力
 
-[AirPlay / 出力先を選択]
+現在の出力:
+システム管理
+
+[ AVRoutePickerView — システム route ボタン ]
 ```
 
-`AVRoutePickerView` を Flutter UI へ組み込む方式は **未確定**。設計候補:
+- Presentation Platform View で Apple 公式 route ボタンを表示（[audio-output-ios.md](audio-output-ios.md) §8）
+- Flutter Button から `openSystemRoutePicker()` を呼ばない
+- Windows Radio List **禁止**
+- 「システム管理」は **OS manages the route** の意味（[audio-output-ios.md](audio-output-ios.md) §5.4）
 
-| 候補 | 概要 | 備考 |
-|------|------|------|
-| Platform View | Flutter `UiKitView` で `AVRoutePickerView` を埋め込む | 定番。Flutter 3.47 で利用可能 |
-| Native view embedding | 同上だが専用 Plugin / MethodChannel でラップ | 再利用・テスト容易 |
-| カスタム Platform Channel + モーダル | ネイティブ側で picker を表示 | Platform View 不要だが UX 差異あり |
+### 4.5 永続化
 
-**推奨候補: Platform View（`UiKitView`）** — Apple 提供 UI をそのまま使え、Settings 行内への配置が自然。最終方式は iOS 実機検証後に確定する。
+Android と同様、物理 device ID の永続保存を **前提にしない。**
 
-### 4.3 永続化
+| 保存 | 方針 |
+|------|------|
+| `mode` | 原則 `systemDefault`（OS 管理）のみ |
+| `deviceId` / `deviceLabel` | 保存しない |
 
-Android と同様、物理 device ID の永続保存を前提にしない。`mode = systemDefault`（OS 管理）を基本とする。
+iOS route API は stable persistent output device ID を **保証しない**。Phase F では保存 **しない**（Phase G 境界は [audio-output-ios.md](audio-output-ios.md) §15）。
 
 ## 5. 共通ドメインモデル
 
@@ -372,14 +408,28 @@ class AudioOutputCapabilities {
 }
 ```
 
+### 6.1 `supportsSystemRoutePicker` の正式意味（Phase E / F 確定）
+
+`supportsSystemRoutePicker` は、
+
+**`AudioOutputService.openSystemRoutePicker()` を Application から直接呼び出せるか**
+
+を意味する。Windows / Android / iOS で **同一契約**。
+
+| 含まない | 内容 |
+|----------|------|
+| 「OS に route picker UI が存在する」 | **含めない** — iOS embedded `AVRoutePickerView` は **Presentation 責務**（[audio-output-ios.md](audio-output-ios.md) §7） |
+
+全 platform 比較: [audio-output-ios.md](audio-output-ios.md) §5。
+
 | Capability | Windows（Phase B 実装） | Android | iOS |
 |------------|-------------------------|---------|-----|
 | `supportsDeviceEnumeration` | true | false | false |
 | `supportsDirectDeviceSelection` | true | false | false |
-| `supportsSystemRoutePicker` | false | **runtime: API >= 30 → true / API < 30 → false**（minSdk 24） | true |
+| `supportsSystemRoutePicker` | false | **runtime: API >= 30 → true / API < 30 → false**（minSdk 24） | **false** |
 | `supportsPersistentDeviceId` | true | false | false |
 
-Service / UI は Capability を参照し、未サポート method 呼び出しを避ける。
+Service / UI は Capability を参照し、未サポート method 呼び出しを避ける。iOS の embedded route picker 表示は Capability ではなく **iOS Presentation** が決定する。
 
 ## 7. Service 境界
 
@@ -654,7 +704,7 @@ Phase B + G ──▶ Windows 起動時復元完成
 | **C** | Windows Settings UI + `AudioOutputController` + Composition wiring | **Design Complete**（Launcher placement: **[Design Complete](settings.md) §15** / implementation **Not Implemented**） | A, B |
 | **D** | Windows hot unplug / fallback | **Design Complete**（[audio-output-hot-unplug.md](audio-output-hot-unplug.md)）/ **Not Implemented** | B |
 | **E** | Android platform output picker | **Design Complete**（[audio-output-android.md](audio-output-android.md)）/ **Not Implemented** | A |
-| **F** | iOS `AVRoutePickerView` 組み込み | 未実装 | A |
+| **F** | iOS System Route Picker | **Design Complete**（[audio-output-ios.md](audio-output-ios.md)）/ **Not Implemented** | A |
 | **G** | 設定永続化（`AudioOutputPreference`） | 未実装 | A |
 
 ### 並行可能範囲
@@ -694,7 +744,7 @@ client commit: `c3239f3` — `feat: Windows音声出力デバイス切り替え�
 | 項目 | 備考 |
 |------|------|
 | Android native 実装詳細 | [audio-output-android.md](audio-output-android.md) **Design Complete** / route technology **Selected** |
-| iOS Flutter embedding 方式 | Platform View 推奨候補だが未確定 |
+| iOS native 実装詳細 | [audio-output-ios.md](audio-output-ios.md) **Design Complete** / route technology **Selected** |
 | 設定永続化 library | shared_preferences 等は未選定 |
 | 設定画面全体デザイン | [settings.md](settings.md)（Shell）+ Phase C Section |
 | `SettingsController` / `AudioOutputController` 名称 | [settings.md](settings.md) / [audio-output-settings.md](audio-output-settings.md) で設計確定 |

@@ -63,7 +63,7 @@ Phase C 実装完了時点でユーザーが Settings から出力デバイス�
 |-------|------|
 | **D** | hot unplug 検知、選択中デバイス消失時の **自動** System Default fallback、disconnect 通知 | [audio-output-hot-unplug.md](audio-output-hot-unplug.md) **Design Complete** / 未実装 |
 | **E** | Android platform output picker UI |
-| **F** | iOS `AVRoutePickerView` UI |
+| **F** | iOS System Route Picker UI | **Design Complete**（[audio-output-ios.md](audio-output-ios.md)）/ **Not Implemented** |
 | **G** | `AudioOutputPreference` 永続化、再起動後復元 |
 
 Phase C は **「現在取得できている一覧と currentSelection を表示し、ユーザー操作で切り替える」** ところまで。
@@ -532,7 +532,7 @@ Service Phase B テスト（device mapping / `selectDevice` 規則等）と **�
 | | Settings Launcher implementation | **Not Implemented** |
 | **D** | hot unplug、選択中デバイス消失の **自動** fallback、通知 | **Design Complete**（[audio-output-hot-unplug.md](audio-output-hot-unplug.md)）/ **Not Implemented** |
 | **E** | Android platform output picker Settings UI | **Design Complete**（[audio-output-android.md](audio-output-android.md)）/ **Not Implemented** |
-| **F** | iOS route picker Settings UI |
+| **F** | iOS route picker Settings UI | **Design Complete**（[audio-output-ios.md](audio-output-ios.md)）/ **Not Implemented** |
 | **G** | Preference persistence、再起動復元 |
 
 ## 20. 未確定事項（Phase C 実装前）

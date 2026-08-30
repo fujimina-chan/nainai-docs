@@ -34,6 +34,7 @@ nainai-docs/
 │   ├── audio-output-settings.md       # Windows Settings UI（Phase C 設計）
 │   ├── audio-output-hot-unplug.md     # Windows hot unplug / fallback（Phase D 設計）
 │   ├── audio-output-android.md        # Android route picker（Phase E 設計）
+│   ├── audio-output-ios.md            # iOS route picker（Phase F 設計）
 │   ├── settings.md                    # アプリ共通 Settings 基盤（Tooltip / Launcher 等）
 │   ├── phase2-ui.md                   # Phase 2 再生 UI 方針
 │   └── design-system.md               # Design System / Theme
@@ -64,6 +65,7 @@ nainai-docs/
 | [audio-output-settings.md](design/audio-output-settings.md) | Windows 音声出力 Settings UI（Phase C 詳細設計） |
 | [audio-output-hot-unplug.md](design/audio-output-hot-unplug.md) | Windows hot unplug / automatic fallback（Phase D 詳細設計） |
 | [audio-output-android.md](design/audio-output-android.md) | Android System Route Picker（Phase E 詳細設計） |
+| [audio-output-ios.md](design/audio-output-ios.md) | iOS System Route Picker（Phase F 詳細設計） |
 | [settings.md](design/settings.md) | アプリ共通 Settings 基盤（Tooltip ON/OFF、Settings Launcher 配置等） |
 | [phase2-ui.md](design/phase2-ui.md) | Phase 2 再生 UI（Windows 固定 Bottom Panel 含む Desktop / Mobile・状態別） |
 | [design-system.md](design/design-system.md) | Design Persona / Theme / Token / Typography |
