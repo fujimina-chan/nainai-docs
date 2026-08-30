@@ -531,7 +531,7 @@ Service Phase B テスト（device mapping / `selectDevice` 規則等）と **�
 | | Settings Launcher physical placement | **Design Complete**（[settings.md](settings.md) §15） |
 | | Settings Launcher implementation | **Not Implemented** |
 | **D** | hot unplug、選択中デバイス消失の **自動** fallback、通知 | **Design Complete**（[audio-output-hot-unplug.md](audio-output-hot-unplug.md)）/ **Not Implemented** |
-| **E** | Android platform output picker Settings UI |
+| **E** | Android platform output picker Settings UI | **Design Complete**（[audio-output-android.md](audio-output-android.md)）/ **Not Implemented** |
 | **F** | iOS route picker Settings UI |
 | **G** | Preference persistence、再起動復元 |
 

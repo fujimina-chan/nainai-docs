@@ -13,6 +13,7 @@
 
 - [Windows Settings UI（Phase C）](audio-output-settings.md)
 - [Windows hot unplug / fallback（Phase D）](audio-output-hot-unplug.md)
+- [Android System Route Picker（Phase E）](audio-output-android.md)
 - [アプリ共通 Settings 基盤](settings.md)
 - [UI Localization](localization.md)
 - [メディア再生](media-playback.md)
@@ -213,23 +214,25 @@ media_kit `AudioDevice.auto()`（`name == 'auto'`）を System Default とする
 
 ## 3. Android 設計
 
-### 3.1 方針
+Phase E 詳細設計正本: **[audio-output-android.md](audio-output-android.md)**（**Design Complete** / **Not Implemented**）。
+
+### 3.1 方針（要約）
 
 media_kit / mpv の `AudioDevice` API を、Bluetooth / 有線 / USB / 端末スピーカー等の **物理出力先一覧 UI として使用しない。**
 
 Android では **Android platform output picker**（OS 標準のメディア出力選択 UX）を利用する方向とする。
 
-### 3.2 重要: 単一 API への固定禁止
+### 3.2 Phase E 採用 API（確定）
 
-具体的な実装を `MediaRouter2.showSystemOutputSwitcher()` のみに固定しない。
+Phase E の primary native API は **`androidx.mediarouter.app.SystemOutputSwitcherDialogController.showDialog(context)`**（[audio-output-android.md](audio-output-android.md) §2.2 / §6.3）。
 
-| 理由 | 内容 |
+| 項目 | 内容 |
 |------|------|
-| API level 差 | 利用可能 API が端末・OS バージョンで異なる |
-| AndroidX MediaRouter | 第三者アプリ向けの標準ルート選択基盤 |
-| MediaSession 統合 | 通知 / BT / 自動車等との連携状況で最適方式が変わる |
+| Dependency | `androidx.mediarouter:mediarouter:1.8.1`（実装開始時 stable 再確認） |
+| API 吸収 | AndroidX が API 30–33 / 34+ の差分を内部処理。**nainai は `MediaRouter2.showSystemOutputSwitcher()` を第一設計で直接分岐しない** |
+| 不採用 | `MediaRouteChooserDialogFragment` fallback（System Output Switcher の偽装禁止） |
 
-設計書上は **Android platform output picker** という抽象機能として記載し、実装時に minSdk / targetSdk / MediaSession 有無を踏まえて具体 API を選定する。
+Phase A/B 時代の「Framework API 1 つへの早期固定禁止」は、AndroidX System Output Switcher 採用により Phase E で解消した。
 
 ### 3.3 nainai-client 現状環境（read-only 調査）
 
@@ -238,7 +241,7 @@ Android では **Android platform output picker**（OS 標準のメディア出�
 
 | 項目 | 値 | 根拠 |
 |------|-----|------|
-| minSdk | **24** | `android/app/build.gradle.kts` → `flutter.minSdkVersion`。Flutter 3.47.0 SDK デフォルト（`FlutterExtension.kt`） |
+| minSdk | **24** | `android/app/build.gradle.kts` → `minSdk = flutter.minSdkVersion`。Flutter SDK `FlutterExtension.kt`（`C:\flutter\packages\flutter_tools\gradle\src\main\kotlin\FlutterExtension.kt`）→ `minSdkVersion: Int = 24` |
 | targetSdk | **36** | 同上 → `flutter.targetSdkVersion` |
 | compileSdk | **36** | 同上 → `flutter.compileSdkVersion` |
 | MediaSession | **未使用** | コードベース・Manifest に該当参照なし |
@@ -254,17 +257,17 @@ Android では **Android platform output picker**（OS 標準のメディア出�
 ### 3.4 UI（概念）
 
 ```text
-音声出力デバイス
+音声出力
 
 現在の出力:
 システム管理
 
-[出力先を変更]
+[音声出力先を選択]
 ```
 
-- ボタン操作で OS 標準の出力選択 UI を表示または遷移する
-- Windows のような独自 device list は表示しない
-- 「現在の出力」表示は OS が提供する情報を反映する。取得不能時は「システム管理」等の抽象表示とする
+- ボタン操作で OS 標準 System Output Switcher を表示（API >= 30）。API < 30 では action 非表示（[audio-output-android.md](audio-output-android.md) §7.2）
+- Windows のような独自 device list / Radio List は表示しない
+- 「システム管理」は **OS が route を管理している** 意味であり、「端末 speaker 使用中」とは限らない（[audio-output-android.md](audio-output-android.md) §5.3）
 
 ### 3.5 永続化
 
@@ -373,7 +376,7 @@ class AudioOutputCapabilities {
 |------------|-------------------------|---------|-----|
 | `supportsDeviceEnumeration` | true | false | false |
 | `supportsDirectDeviceSelection` | true | false | false |
-| `supportsSystemRoutePicker` | false | true | true |
+| `supportsSystemRoutePicker` | false | **runtime: API >= 30 → true / API < 30 → false**（minSdk 24） | true |
 | `supportsPersistentDeviceId` | true | false | false |
 
 Service / UI は Capability を参照し、未サポート method 呼び出しを避ける。
@@ -650,7 +653,7 @@ Phase B + G ──▶ Windows 起動時復元完成
 | **B** | Windows `MediaKitPlaybackService` が `AudioOutputService` も実装 | **Implemented** | A |
 | **C** | Windows Settings UI + `AudioOutputController` + Composition wiring | **Design Complete**（Launcher placement: **[Design Complete](settings.md) §15** / implementation **Not Implemented**） | A, B |
 | **D** | Windows hot unplug / fallback | **Design Complete**（[audio-output-hot-unplug.md](audio-output-hot-unplug.md)）/ **Not Implemented** | B |
-| **E** | Android platform output picker | 未実装 | A |
+| **E** | Android platform output picker | **Design Complete**（[audio-output-android.md](audio-output-android.md)）/ **Not Implemented** | A |
 | **F** | iOS `AVRoutePickerView` 組み込み | 未実装 | A |
 | **G** | 設定永続化（`AudioOutputPreference`） | 未実装 | A |
 
@@ -690,8 +693,7 @@ client commit: `c3239f3` — `feat: Windows音声出力デバイス切り替え�
 
 | 項目 | 備考 |
 |------|------|
-| Android native 実装詳細 | MediaRouter2 / AndroidX / MediaSession 等の具体選定 |
-| Android API ごとの fallback | minSdk 24 を前提に実装時決定 |
+| Android native 実装詳細 | [audio-output-android.md](audio-output-android.md) **Design Complete** / route technology **Selected** |
 | iOS Flutter embedding 方式 | Platform View 推奨候補だが未確定 |
 | 設定永続化 library | shared_preferences 等は未選定 |
 | 設定画面全体デザイン | [settings.md](settings.md)（Shell）+ Phase C Section |
