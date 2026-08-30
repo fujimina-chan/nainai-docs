@@ -56,7 +56,7 @@ Audio Output **Phase G** — ユーザーが **明示的に選択した** 音声
 ```text
 AudioOutputPreferenceCoordinator
         |
-        +--> AudioOutputController              (borrow)
+        +--> AudioOutputController              (borrow — runtime facade)
         |       |
         |       +--> AudioOutputService         (Controller が borrow)
         |
@@ -72,15 +72,17 @@ AudioOutputPreferenceRepository
 AudioOutputService
         X--> AudioOutputPreferenceRepository    (知らない)
         X--> AudioOutputPreferenceCoordinator   (知らない)
+        X--> AudioOutputController              (知らない)
 ```
 
-Coordinator は **readiness 待機** のため `AudioOutputService` を **直接 borrow してよい**（Controller 経由で間接参照のみに **限定しない**）。ただし Service は Repository / Coordinator を **知らない**。
+**Coordinator は `AudioOutputService` を直接 borrow しない。** runtime 操作・readiness 待機とも **Controller を唯一の Application facade** として利用する。
 
 | コンポーネント | 担当 |
 |----------------|------|
-| **`AudioOutputController`** | runtime state、`AudioOutputService` 観測、Phase D reconciliation / automatic fallback、**runtime selection primitive**（`selectDevice` / `selectSystemDefault`）、`_selectGeneration` race |
+| **`AudioOutputController`** | runtime state、`AudioOutputService` 観測、Phase D reconciliation / automatic fallback、**runtime selection primitive**（`selectDevice` / `selectSystemDefault`）、`_selectGeneration` race、**`initialAvailableDevices` pass-through**（readiness logic は **再実装しない**） |
 | **`AudioOutputPreferenceCoordinator`** | persisted load、startup restore orchestration、**user command entry**、selection 成功後 persist、serialized save ordering、persistence error、`desiredPreference` / `lastPersistedPreference` |
 | **`AudioOutputPreferenceRepository`** | storage I/O のみ |
+| **`AudioOutputService`** | package/platform I/O、**Service lifetime 開始時から initial enumeration を eager capture**（§6.4） |
 
 **Controller は Persistence を知らない。** `AudioOutputPreferenceRepository.load/save` を **直接呼ばない**。
 
@@ -133,7 +135,7 @@ Composition Root
     ↓
 AudioOutputPreferenceCoordinator.initialize()     // Repository.load
     ↓
-applyStartupRestore()                             // initialAvailableDevices → Controller.select*
+applyStartupRestore()                             // Controller.initialAvailableDevices → Controller.select*
 ```
 
 restore 成功後は **ユーザー明示操作ではない** → **同じ preference を re-save しない**。
@@ -177,34 +179,80 @@ restore 成功後は **ユーザー明示操作ではない** → **同じ prefe
 
 ### 6.4 Phase G explicit readiness contract（正式 — Case B）
 
-`availableDevicesStream.first` は **廃止**。Phase G 実装要件として **`AudioOutputService` に explicit readiness API** を追加する。
+`availableDevicesStream.first` は **廃止**。Phase G 実装要件として **`AudioOutputService` に explicit readiness API** を追加し、**`AudioOutputController` が pass-through** する。
 
 ```dart
-/// Initial device enumeration が authoritative になった時点の snapshot を返す。
+// AudioOutputService
+/// Initial audio-device enumeration が authoritative になった時点の snapshot。
 ///
-/// - [AudioOutputCapabilities.supportsDeviceEnumeration] == true:
-///   最初の authoritative enumeration 完了で **一度だけ** complete。
-///   返却 list は [availableDevices] と同型（`auto` 除外済み）。
+/// - supportsDeviceEnumeration == true:
+///   Service lifetime 開始時から eager capture した最初の authoritative list で
+///   **一度だけ** complete。返却 list は [availableDevices] と同型（`auto` 除外済み）。
 ///   0 件でも complete する（authoritative empty）。
 /// - supportsDeviceEnumeration == false:
-///   **即 complete**（fake readiness event **禁止**）。
+///   **即 `[]` で complete**（UnsupportedError **禁止**）。
 ///
-/// 複数 await は同一 Future を共有し、late awaiter は **即 complete** + キャッシュ snapshot。
+/// 複数 await は **同一 Future identity** を共有。
+/// late awaiter は cached initial snapshot を **即** 取得。
 Future<List<AudioOutputDevice>> get initialAvailableDevices;
+
+// AudioOutputController — pass-through のみ（readiness logic 再実装禁止）
+Future<List<AudioOutputDevice>> get initialAvailableDevices =>
+    _service.initialAvailableDevices;
 ```
 
-名称は実装 Phase で `initialDeviceEnumerationReady` 等へ調整可。**意味は固定**: 「initial enumeration が authoritative になった」。
+名称は実装 Phase で調整可。**意味は固定**: 「initial enumeration が authoritative になった時点の **最初の** snapshot」。
 
-**Concrete 実装方針（`MediaKitPlaybackService`）:**
+#### 6.4.1 lazy subscription 禁止（最重要）
+
+`initialAvailableDevices` getter **呼出し時** に `availableDevicesStream.listen(...)` を **新規開始する実装は禁止**。
+
+broadcast stream は subscribe 以前の authoritative event を **replay しない**。getter 呼出し起点の subscription では、Service 生成〜await 開始までに到着した event を **取り逃す**。
+
+#### 6.4.2 Service lifetime で eager capture（Windows `MediaKitPlaybackService`）
+
+```text
+MediaKitPlaybackService 生成
+    ↓
+audio-device-list observation lifecycle 開始（constructor / init）
+    ↓
+最初の authoritative audio-device-list を受信
+    ↓
+_initialAvailableDevicesCompleter.complete(mappedDevices)
+    ↓
+initial snapshot を cache（以後 **不変**）
+    ↓
+late awaiter も同一 cached result を取得
+```
+
+Coordinator の `await` 開始 **時刻** に readiness 捕捉を **依存させない**。
 
 | 項目 | 方針 |
 |------|------|
-| authoritative 信号 | 最初の mpv `audio-device-list` property change を処理した時点 |
-| complete 値 | その時点の mapped `availableDevices`（`auto` 除外） |
-| late awaiter | 既 complete なら **即** キャッシュ snapshot を返す — stream event 取り逃し **不影响** |
-| **禁止** | `Future.delayed` / `Timer` / timeout 後 empty 扱い / `availableDevicesStream.first` への依存 |
+| authoritative 信号 | 最初の mpv `audio-device-list` property change を **Service init から** 捕捉 |
+| complete 値 | その時点の mapped devices（`auto` 除外） |
+| Future identity | **単一** Completer / cached Future — 呼ぶたび別 stream 待機を **作らない** |
+| late awaiter | complete 前 → 同一 pending Future。complete 後 → **即** cached snapshot |
+| **禁止** | lazy subscription / `Future.delayed` / `Timer` / timeout 後 empty 扱い / `availableDevicesStream.first` |
 
-Coordinator startup restore は **`await audioOutputService.initialAvailableDevices`** を使用する。**stream timing 単独には依存しない**。
+#### 6.4.3 initial と current の区別
+
+| API | 意味 | 更新 |
+|-----|------|------|
+| **`initialAvailableDevices`** | startup restore 判定用の **最初の** authoritative snapshot | complete 後 **不変** |
+| **`availableDevices`** | **現在** の最新 snapshot | hot plug/unplug で更新 |
+| **`availableDevicesStream`** | 以後の device list 変化 | Phase D reconciliation 等 |
+
+`initialAvailableDevices` complete **後** の hot plug/unplug によって initial snapshot を **書き換えない**。Phase D は **current** stream / state を使用する。
+
+#### 6.4.4 authoritative empty
+
+最初の authoritative `audio-device-list` が `auto` のみ、または mapper 後 individual device **0 件** の場合:
+
+- `initialAvailableDevices` = **`[]` で正常 complete**
+- 意味: **authoritative individual devices empty**（enumeration **未完了ではない**）
+
+Coordinator startup restore は **`await controller.initialAvailableDevices`** を使用する（Controller → Service pass-through）。
 
 authoritative snapshot **取得後**:
 
@@ -214,23 +262,25 @@ authoritative snapshot **取得後**:
 | A.id ∉ devices | **missing at startup**（§12） |
 | devices が `[]` | **authoritative empty** — specific 復元 **不可**（missing 扱い） |
 
-### 6.5 Android / iOS
+### 6.5 Android / iOS（supportsDeviceEnumeration == false）
 
 | 条件 | 方針 |
 |------|------|
-| `supportsDeviceEnumeration == false` または `supportsPersistentDeviceId == false` | **readiness 待機不要** — `initialAvailableDevices` は即 complete。specific-device restore **自体を行わない** |
-| fake readiness | **禁止** — OS-managed route を enumeration 完了と **偽装しない** |
+| `supportsDeviceEnumeration == false` | `initialAvailableDevices` は **即 `[]` で complete** — 「application-managed enumeration 非対応のため authoritative list は empty」 |
+| `supportsPersistentDeviceId == false` | Coordinator は capability 確認後 **specific restore 対象外** — 通常 `initialAvailableDevices` await **不要** |
+| fake readiness | **禁止** |
+| UnsupportedError | **禁止** — interface 契約を満たすため即 complete。永久分岐を増やさない |
 
-### 6.6 Enumeration failure
+### 6.6 Readiness error / dispose before readiness
 
-initial enumeration が **完了しない / 失敗** する platform 契約が必要な場合:
+initial enumeration が authoritative snapshot 取得 **前** に terminal failure した場合、`initialAvailableDevices` は **error completion 可能**（**永久 pending 禁止**）。
 
-| 項目 | 正式 |
-|------|------|
-| startup restore | **適用しない** |
-| runtime | **current route 維持** — Presentation だけ default に **書き換え禁止** |
-| saved Preference | **削除しない** |
-| UI | **Non-blocking restore / enumeration error**（Playback Blocking Error **禁止**） |
+| ケース | 方針 |
+|--------|------|
+| underlying enumeration stream / platform error | error complete — 具体 type は既存 Audio Output error model に合わせる（実装 Phase） |
+| `MediaKitPlaybackService` dispose **before** readiness complete | dispose-related **failure** として complete — **永久 pending 禁止** |
+| Coordinator | error / dispose failure 時 **restore 中止**。saved Preference **削除しない**。runtime **current route 維持** |
+| UI | Non-blocking restore / enumeration error（Playback Blocking Error **禁止**） |
 | timeout 偽装 | **禁止** |
 
 ### 6.7 Readiness 待機中の race / dispose
@@ -258,9 +308,15 @@ initial enumeration が **完了しない / 失敗** する platform 契約が�
 
 `deviceId` = identity。`label` = display cache のみ — **restore 条件に不使用**。UI は `availableDevices` の最新 label を優先。
 
-### 7.1 `AudioOutputService` readiness API（Phase G 追加）
+### 7.1 Readiness API 配置（Phase G 追加）
 
-§6.4 の `initialAvailableDevices` を `AudioOutputService` abstract interface に追加する。Controller は **readiness Future を expose しない** — Coordinator が Service を直接 await する。
+| Layer | 追加 |
+|-------|------|
+| **`AudioOutputService`** | `initialAvailableDevices` — eager capture 実装 |
+| **`AudioOutputController`** | **pass-through のみ** — Service Future を expose。Persistence **非依存** |
+| **`AudioOutputPreferenceCoordinator`** | `await controller.initialAvailableDevices` — Service **直接参照禁止** |
+
+Controller に readiness API を追加しても Repository / `shared_preferences` / JSON / `desiredPreference` / `lastPersistedPreference` を **知らない**。readiness は Audio Output **runtime lifecycle** の責務。
 
 ## 8. Repository boundary
 
@@ -302,15 +358,16 @@ Coordinator が **`preferredDeviceUnavailable`**（名称は実装 Phase で確�
 2. AudioOutputPreferenceCoordinator.initialize()
        → Repository.load()
        → desiredPreference / lastPersistedPreference 初期化
-3. capabilities 確認
+3. Controller.state / capabilities 確認
 4. supportsPersistentDeviceId == false → restore skip（Android / iOS）
-5. await audioOutputService.initialAvailableDevices   // §6.4 authoritative snapshot
+5. specific restore 対象なら await controller.initialAvailableDevices   // §6.4
 6. authoritative snapshot 取得
-7. saved systemDefault → Controller.selectSystemDefault()
-8. saved specific A かつ A ∈ devices → Controller.selectDevice(A.id)
-9. saved specific A かつ A ∉ devices → §12 missing
-10. select 失敗 → §11 restore failure
-11. enumeration failure → §6.6
+7. _restoreGeneration 再確認 — stale なら restore 中止
+8. saved systemDefault → Controller.selectSystemDefault()
+9. saved specific A かつ A ∈ devices → Controller.selectDevice(A.id)
+10. saved specific A かつ A ∉ devices → §12 missing
+11. select 失敗 → §11 restore failure
+12. readiness error / dispose before readiness → §6.6
 ```
 
 **restore はユーザー明示操作ではない** — **re-save 禁止**。
@@ -445,8 +502,10 @@ NainaiApp
 ├── AudioOutputService
 ├── AudioOutputController(service)
 ├── AudioOutputPreferenceRepository
-└── AudioOutputPreferenceCoordinator(repository, service, controller)
+└── AudioOutputPreferenceCoordinator(repository, controller)
 ```
+
+Coordinator コンストラクタに **`AudioOutputService` を渡さない**。
 
 | 対象 | dispose |
 |------|---------|
@@ -461,25 +520,48 @@ NainaiApp
 | ケース |
 |--------|
 | Controller は Coordinator **非依存** |
-| Coordinator は Controller + Repository + Service **依存** |
+| Coordinator は **Controller + Repository のみ** 依存 — Service **直接参照禁止** |
+| Controller は Service へ pass-through（readiness 含む） |
 | fallback が Coordinator **非経由** |
 
-### 19.2 Initial readiness
+### 19.2 Service readiness
+
+| ケース |
+|--------|
+| getter 呼出し **前** に authoritative event 到着 → late awaiter でも取得 |
+| multiple awaiters → **同一 initial result** |
+| authoritative non-empty / authoritative empty |
+| initial complete 後 hot plug → **initial result 不変** |
+| dispose before readiness → **永久 pending しない** |
+| lazy subscription **なし** |
+| **arbitrary delay / timeout なし** |
+
+### 19.3 Unsupported enumeration
+
+| ケース |
+|--------|
+| `supportsDeviceEnumeration == false` → `initialAvailableDevices == []` 即 complete |
+| UnsupportedError **なし** |
+
+### 19.4 Controller readiness
+
+| ケース |
+|--------|
+| readiness を Service から **pass-through** |
+| Controller が **別 subscription を作らない** |
+
+### 19.5 Coordinator readiness / race
 
 | ケース |
 |--------|
 | 同期 `[]` だけでは missing **判定しない** |
 | readiness **未 complete** の `[]` ≠ authoritative empty |
-| **`initialAvailableDevices` complete 後** に restore 判定 |
-| authoritative non-empty → restore |
-| authoritative empty → specific missing |
-| stream event を **subscribe 前に取り逃しても** `.first` 永久待機 **しない**（explicit API が complete する） |
-| **arbitrary delay / timeout なし** |
-| readiness 待機中 user selection → user 優先 |
+| **`controller.initialAvailableDevices` complete 後** に restore 判定 |
+| readiness 待機中 user selection → user 優先 / generation 再確認 |
 | readiness 待機中 dispose → post-complete restore **禁止** |
-| enumeration failure → restore skip、preference 保持 |
+| readiness error → restore skip、preference 保持 |
 
-### 19.3 Persistence truth
+### 19.6 Persistence truth
 
 | ケース |
 |--------|
@@ -487,7 +569,7 @@ NainaiApp
 | stale save success / failure |
 | latest save failure — **runtime rollback なし** |
 
-### 19.4 Startup / race / platform
+### 19.7 Startup / race / platform
 
 §18 旧ケース + restore 中 user select / stale restore / missing / restore failure / Windows restore / Android・iOS **no persistence**。
 
@@ -510,6 +592,6 @@ NainaiApp
 | Phase G design | **Design Complete** |
 | Phase G implementation | **Not Implemented** |
 | Phase D → Preference | **B — runtime only fallback, persist 保持** |
-| Dependency | **Coordinator → Controller + Repository（一方向）** |
-| Readiness | **`AudioOutputService.initialAvailableDevices`**（`availableDevicesStream.first` **廃止**） |
+| Dependency | **Coordinator → Controller + Repository（Service 直接参照なし）** |
+| Readiness | **`Controller.initialAvailableDevices`** → Service eager capture（`availableDevicesStream.first` **廃止**、lazy subscription **禁止**） |
 | Truth model | **`desiredPreference` / `lastPersistedPreference`** |
