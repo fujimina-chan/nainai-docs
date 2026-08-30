@@ -196,22 +196,67 @@ fake 項目 **禁止**。MVP で General / Audio のみのため **別 navigatio
 
 本書が定める **Presentation 側の inject 契約** のみ。具体的 constructor graph / dispose order / platform service construction は **[audio-output-composition.md](audio-output-composition.md)**（Phase H）が正本。
 
-```text
-SettingsShell
-  ├─ SettingsController          ← state / setShowTooltips
-  └─ AudioOutputSettingsSection
-        ├─ State: AudioOutputController
-        └─ User commands: AudioOutputPreferenceCoordinator
-            または Coordinator を backing とする command interface
-```
+Settings Shell / `AudioOutputSettingsSection` は **`AudioOutputPlatformComposition.settingsPresentationMode`** に基づき Audio section を構成する。Presentation Widget 内部で `Platform.isWindows` / `Platform.isAndroid` / `Platform.isIOS` を **乱用しない** — platform 判定は Composition Root（Phase H）の責務。
+
+### 6.1 Settings Presentation Mode（正式 — 3 種）
+
+Phase H 正本と同一。本書では **Presentation が必要とする契約のみ** 記載する。
+
+| Mode | Platform | UI 構成 |
+|------|----------|---------|
+| `deviceList` | Windows（Linux/macOS 将来） | System Default + device **Radio List** |
+| `systemRoutePickerCommand` | Android | 状態表示 + route picker **action button** |
+| `embeddedSystemRoutePicker` | iOS | **`IOSAudioRoutePickerView`** 埋め込み |
+
+上記 **3 種以外を本書では追加しない**。
+
+### 6.2 Capability と Presentation Mode の分離
+
+| 概念 | 意味 |
+|------|------|
+| **Capability** | `AudioOutputService` が提供する **command 能力**（例: `supportsSystemRoutePicker`） |
+| **Presentation Mode** | Settings Audio section の **UI 構成方式** |
+
+**混同禁止:** iOS の `supportsSystemRoutePicker == false` でも **`embeddedSystemRoutePicker` を表示できる**。capability を Presentation 表示可否の gate に **しない**。
+
+### 6.3 inject 契約（共通）
 
 | 層 | 依存 |
 |----|------|
 | **State 表示** | `SettingsController` / `AudioOutputController` |
-| **User commands（Phase G）** | `AudioOutputPreferenceCoordinator`（または同等 command abstraction） |
+| **Presentation Mode** | `AudioOutputPlatformComposition.settingsPresentationMode` |
 | **禁止** | Presentation へ `AudioOutputService` **直接 inject** |
 
-Shell / Section が Service 型を **import しない**。
+Shell / Section が Service 型を **import しない**。Composition から **必要なものだけ** 提供する:
+
+- `AudioOutputController` state
+- `AudioOutputSelectionCommands`（Windows のみ）
+- `SystemRoutePickerCommands`（Android のみ）
+- Presentation Mode
+- iOS native Platform View（`IOSAudioRoutePickerView`）
+
+### 6.4 Command interface の Optional 性
+
+全 platform で不要な command object を **fake 注入しない**（NoOp で埋める設計は **原則採用しない**）。
+
+| Platform | `AudioOutputSelectionCommands` | `SystemRoutePickerCommands` |
+|----------|-------------------------------|----------------------------|
+| **Windows** | **あり** | **なし** |
+| **Android** | **なし** | **あり** |
+| **iOS** | **なし** | **なし** |
+
+exact constructor shape は実装 Phase H / Settings 実装時に調整可。
+
+```text
+SettingsShell
+  ├─ SettingsController                    ← state / setShowTooltips
+  └─ AudioOutputSettingsSection
+        ├─ mode: settingsPresentationMode
+        ├─ state: AudioOutputController
+        ├─ selectionCommands?              ← Windows only
+        ├─ routePickerCommands?            ← Android only
+        └─ IOSAudioRoutePickerView?        ← iOS only
+```
 
 ## 7. State ownership（確定）
 
@@ -343,39 +388,75 @@ Visual Tooltip ON/OFF は §8。Semantics **常時維持**。
 
 Widget: **`AudioOutputSettingsSection`**（[audio-output-settings.md](audio-output-settings.md)）。
 
-### 14.1 正式 Presentation 依存
+Phase H 正本 **[audio-output-composition.md](audio-output-composition.md)** を参照。本節は Presentation が必要とする契約のみ記載する（Phase H 内容の **丸ごと重複転載禁止**）。
 
-| 依存 | 用途 |
+### 14.1 構成原則
+
+| 項目 | 内容 |
 |------|------|
-| **State** | `AudioOutputController` / `AudioOutputState` |
-| **User commands** | `AudioOutputPreferenceCoordinator` または Coordinator backing の **command interface** |
-| **禁止** | `AudioOutputService` を Presentation へ **直接 inject** |
+| Mode 決定 | `AudioOutputPlatformComposition.settingsPresentationMode`（§6.1） |
+| State | `AudioOutputController` / `AudioOutputState` |
+| Platform 判定 | Section Widget 内 `Platform.is*` **乱用禁止** — mode に従う |
+| Service | **直接 inject 禁止**（§6.3） |
 
-### 14.2 Phase G user command path（Windows 等）
+### 14.2 Windows — `deviceList`
 
-[audio-output-persistence.md](audio-output-persistence.md) §5.1:
+| 項目 | 正式 |
+|------|------|
+| Presentation Mode | **`deviceList`** |
+| State | `AudioOutputController` |
+| Selection Commands | **`AudioOutputSelectionCommands`** |
+| 実装 backing | **`AudioOutputPreferenceCoordinator`** |
+
+**正式 command path:**
 
 ```text
-Presentation
-    ↓ user command
-AudioOutputPreferenceCoordinator.selectDevice / selectSystemDefault
+Settings Presentation
+    ↓
+AudioOutputSelectionCommands
+    ↓
+AudioOutputPreferenceCoordinator
     ↓
 AudioOutputController
     ↓
 AudioOutputService
     ↓ selection success
-Coordinator.persistExplicitSelection(...)
+Coordinator → Preference persistence
 ```
 
-Shell / Section から Controller へ **直接** `selectDevice` を呼ぶ完成形 **にしない**（Coordinator / command abstraction 経由）。
+**UI:** System Default + specific devices **Radio List**（Phase C）。
 
-Phase H readiness / enumeration gate UI は Section + Controller state。具体 lifecycle は Phase H 正本。
+**禁止（完成形）:**
 
-### 14.3 Windows Audio UI（維持）
+| 禁止 | 内容 |
+|------|------|
+| Presentation → Controller 直接 | `AudioOutputController.selectDevice()` / `selectSystemDefault()` |
+| Service 直接 inject | `AudioOutputService` を Section へ渡さない |
 
-System Default + specific devices **Radio List**（Phase C）。
+### 14.3 Android — `systemRoutePickerCommand`
 
-### 14.4 Android Audio UI（維持）
+| 項目 | 正式 |
+|------|------|
+| Presentation Mode | **`systemRoutePickerCommand`** |
+| State | `AudioOutputController` |
+| Route Commands | **`SystemRoutePickerCommands`** |
+| 実装 backing | **`AudioOutputController`** — Coordinator **非経由** |
+
+**正式経路:**
+
+```text
+Settings Presentation
+    ↓
+SystemRoutePickerCommands
+    ↓
+AudioOutputController
+    ↓
+AndroidAudioOutputService
+    ↓
+native System Output Switcher
+```
+
+**UI:**
 
 ```text
 現在の出力: システム管理
@@ -384,19 +465,52 @@ System Default + specific devices **Radio List**（Phase C）。
 
 | 項目 | 内容 |
 |------|------|
-| State | `AudioOutputController` |
-| Command | Coordinator / command abstraction → Controller → `AndroidAudioOutputService.openSystemRoutePicker()` |
-| API < 30 | action **非表示** |
-| Phase G | route picker 結果から Preference device ID **作成禁止** |
+| Persistence 境界 | route picker は **`AudioOutputPreferenceCoordinator` を経由しない** |
+| Preference save | picker 結果から **禁止** |
+| device ID 生成 | picker 結果から **禁止** |
+| API < 30 | `supportsSystemRoutePicker == false` — action **非表示** |
+| 状態表示 | 「現在の出力: システム管理」等は **維持可能** |
 
-### 14.5 iOS 例外境界（維持）
+### 14.4 iOS — `embeddedSystemRoutePicker`
+
+| 項目 | 正式 |
+|------|------|
+| Presentation Mode | **`embeddedSystemRoutePicker`** |
+| State | `AudioOutputController` |
+| Commands | **なし** |
+| Native component | **`IOSAudioRoutePickerView`** → `UiKitView` → `AVRoutePickerView` |
+
+**禁止:**
+
+| 禁止 | 内容 |
+|------|------|
+| `AudioOutputSelectionCommands` | programmatic picker open **禁止** |
+| `SystemRoutePickerCommands` | programmatic picker open **禁止** |
+| Controller | `AudioOutputController.openSystemRoutePicker()` |
+| Flutter Button | programmatic open **禁止** |
+| capability gate | `supportsSystemRoutePicker == true` **要求禁止** — capability は **false のまま** |
+
+`supportsSystemRoutePicker` を Presentation 表示 gate に **参照しない**。embedded picker は **Presentation Mode** で決定（§6.2）。
+
+### 14.5 iOS Platform View lifecycle
 
 | 項目 | 内容 |
 |------|------|
-| State | `AudioOutputController` |
-| Native picker | **`IOSAudioRoutePickerView`**（Platform View）— Presentation-specific |
-| 性質 | Coordinator / Service による programmatic open **ではない** |
-| `supportsSystemRoutePicker` | **参照しない** |
+| 所有者 | **`IOSAudioRoutePickerView`** — Settings Shell 内 Widget lifecycle |
+| 禁止 | `NainaiApp` / `IOSAudioOutputService` が `AVRoutePickerView` を **所有する設計** |
+| Shell close | Platform View Widget は lifecycle に従い **破棄可** |
+| Controller | `AudioOutputController` 自体は **App lifetime で維持**（§7） |
+
+### 14.6 Persistence error（Audio Section 文脈）
+
+`AudioOutputPreferenceCoordinator` 由来の load / save / restore 等 **Persistence error**:
+
+| 項目 | 扱い |
+|------|------|
+| 表示 | Settings Audio Section 文脈で **Non-blocking** |
+| Phase D | `AudioOutputNotificationHost` へ **送らない** |
+
+Readiness / enumeration gate UI は Section + Controller state。具体 lifecycle は Phase H 正本。
 
 ## 15. Phase D notification（確定）
 
@@ -404,7 +518,8 @@ System Default + specific devices **Radio List**（Phase C）。
 |------|--------|
 | **`AudioOutputNotificationHost`** | **App-level** — Settings Shell **外** |
 | Shell open/close | notification host **再生成しない** |
-| Shell 内 | 設定文脈 error のみ |
+| Shell 内 | 設定文脈 error のみ（§11 General save、§14.6 Audio Persistence 等） |
+| fallback success/failure notification | Shell 内部へ **戻さない** |
 
 [audio-output-hot-unplug.md](audio-output-hot-unplug.md)。
 
@@ -465,15 +580,43 @@ Desktop Side Sheet / Mobile Route、open-close、Controller 再生成なし。
 | Escape / scrim / explicit Close |
 | close 後 Controller dispose **なし** |
 
-### 18.6 Audio Output command boundary
+### 18.6 Audio Output — platform contracts
+
+#### Windows
+
+| ケース |
+|--------|
+| Presentation Mode = **`deviceList`** |
+| state = **`AudioOutputController`** |
+| selection = **`AudioOutputSelectionCommands`** |
+| `AudioOutputService` **直接 inject なし** |
+
+#### Android
+
+| ケース |
+|--------|
+| Presentation Mode = **`systemRoutePickerCommand`** |
+| command = **`SystemRoutePickerCommands`** |
+| Coordinator 経由で route picker を **開かない** |
+| API < 30 — action **なし** |
+
+#### iOS
+
+| ケース |
+|--------|
+| Presentation Mode = **`embeddedSystemRoutePicker`** |
+| capability false でも picker **表示** |
+| command object **不要** |
+| **`IOSAudioRoutePickerView`** 表示 |
+| programmatic open Button **なし** |
+
+#### 共通
 
 | ケース |
 |--------|
 | Shell / Section が `AudioOutputService` **直接依存しない** |
-| state は `AudioOutputController` |
-| user command は Coordinator / command abstraction |
-| iOS — native Platform View、`supportsSystemRoutePicker` **非参照** |
 | Phase D notification host が Shell **外** |
+| Section Widget 内 `Platform.is*` **乱用なし** — mode 駆動 |
 
 ### 18.7 Tooltip
 
