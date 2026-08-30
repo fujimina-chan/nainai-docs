@@ -290,7 +290,9 @@ MediaController は Playback Service の Stream を購読済み（Phase 2-3）�
 | OFF | `seek(Duration.zero)` → `stopped` + position zero。`Player.stop()` は使わない |
 | ONE | media_kit single に委譲。Controller は manual seek/play せず、`stopped` にしない |
 
-### dispose（実装済み）
+### dispose
+
+#### Current（Phase 2-3 実装済み）
 
 基本順:
 
@@ -299,6 +301,12 @@ MediaController は Playback Service の Stream を購読済み（Phase 2-3）�
 3. `super.dispose()`
 
 dispose 後に `notifyListeners` しない Guard を持つ。
+
+**Current ownership:** `MediaController` が注入 `MediaPlaybackService` を dispose する（[media-technology.md](../architecture/media-technology.md) §Application Composition）。
+
+#### Phase C 以降（設計確定・未実装）
+
+Audio Output Phase C で `MediaKitPlaybackService` を `MediaController` と `AudioOutputController` が共有するため、**`MediaController.dispose()` から `MediaPlaybackService.dispose()` を除去** する。Service dispose は `NainaiApp` が担当。詳細は [audio-output-settings.md](audio-output-settings.md) §6。
 
 ## 13. エラー
 

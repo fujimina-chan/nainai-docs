@@ -11,6 +11,7 @@
 
 関連:
 
+- [Windows Settings UI（Phase C）](audio-output-settings.md)
 - [UI Localization](localization.md)
 - [メディア再生](media-playback.md)
 - [Phase 2 UI](phase2-ui.md)
@@ -468,6 +469,8 @@ Mobile の `AudioOutputService` 実装は media_kit `Player` 非依存となり�
 
 **`MediaController` へ device preference を直接追加しない。**
 
+Phase C（Windows Settings UI）の詳細設計 — `AudioOutputController` / `AudioOutputState` / UI / Error / Test — は [audio-output-settings.md](audio-output-settings.md) を正とする。
+
 ### 8.1 候補比較
 
 | 案 | 概要 | 長所 | 短所 |
@@ -475,18 +478,9 @@ Mobile の `AudioOutputService` 実装は media_kit `Player` 非依存となり�
 | `SettingsController` 配下 | 設定全体の ChangeNotifier が AudioOutput を保持 | 設定画面拡張に自然 | Settings 全体未実装 |
 | 独立 `AudioOutputController` | 音声出力専用 ChangeNotifier | 単機能でテスト容易。MediaController と独立 | Settings 導入時に統合 wiring が必要 |
 
-#### 推奨: 独立 `AudioOutputController`（将来 SettingsController へ compose）
+#### 推奨: 独立 `AudioOutputController`（Phase C で実装予定）
 
-```dart
-class AudioOutputController extends ChangeNotifier {
-  AudioOutputController({required AudioOutputService service});
-
-  // Capability 反映済み UI state
-  // selectSystemDefault / selectDevice / openSystemRoutePicker
-}
-```
-
-Settings 画面実装時に `SettingsController` が `AudioOutputController` を compose する。最終名称は未確定（§13 参照）。
+[audio-output-settings.md](audio-output-settings.md) §4–§6 に Phase C 確定設計あり。将来 Settings 画面実装時に `SettingsController` が compose する。最終名称は未確定（§13 参照）。
 
 ## 9. Application Composition
 
@@ -504,23 +498,11 @@ NainaiApp
 - Windows では `MediaKitPlaybackService` が `AudioOutputService` も実装済み（Phase B）
 - **`AudioOutputController` / Settings UI / Application Composition wiring は未実装** — Service API は存在するが、ユーザー向け Settings からは選択できない
 
-### 9.2 将来構成（Settings UI / Controller wiring 追加後）
+### 9.2 Phase C 目標構成（Windows — 設計確定）
 
-#### Windows
+[audio-output-settings.md](audio-output-settings.md) §6。`AudioOutputController` wiring と Settings Screen を含む。
 
-```text
-NainaiApp
-  ├─ MediaKitPlaybackService（1 instance）
-  │    ├─ MediaController          ← MediaPlaybackService として注入
-  │    └─ AudioOutputController    ← AudioOutputService として注入
-  ├─ FileSelectorMediaSelectionService
-  ├─ MediaScreen
-  └─ SettingsScreen (future)
-```
-
-`Player` は `MediaKitPlaybackService` 内部で生成・所有する。Application 層は具象 1 インスタンスのみ保持する。
-
-#### Mobile（Android / iOS）
+#### Mobile（Android / iOS — Phase E / F）
 
 ```text
 NainaiApp
@@ -539,19 +521,23 @@ Windows と Mobile で具象 Service の組み合わせは異なってよい。�
 
 ### 9.3 dispose ownership
 
+**Current（Phase B 実装済み）:** `MediaController.dispose()` が注入 `MediaPlaybackService` を dispose する。詳細は [media-playback.md](media-playback.md) §12、[media-technology.md](../architecture/media-technology.md) §Application Composition。
+
+**Phase C 以降（設計確定・未実装）:** 共有 `MediaKitPlaybackService` の唯一 owner は `NainaiApp`。`MediaController` / `AudioOutputController` は Service を dispose しない。`MediaController` からの `MediaPlaybackService.dispose()` 呼び出しを **除去** する。詳細は [audio-output-settings.md](audio-output-settings.md) §6。
+
+**共通原則（Current / Phase C 以降）:**
+
 **共有インスタンスを複数 Controller がそれぞれ dispose する設計は禁止する。**
 
 | 対象 | 原則 |
 |------|------|
 | `Player` | `MediaKitPlaybackService` が所有。Controller から dispose しない |
-| concrete service | Application 層（例: `NainaiApp`）が **1 箇所** で dispose する |
-| Controller | 自身の StreamSubscription 等のみ dispose。service の dispose は呼ばない |
+| concrete service | Phase C 以降: **`NainaiApp` が 1 箇所** で dispose。Current: `MediaController` 経由 |
+| Controller | 自身の StreamSubscription 等のみ dispose |
 
-Windows では `MediaKitPlaybackService` 1 インスタンスが両 interface を提供するため、dispose も **1 回** で足りる。
+Windows では `MediaKitPlaybackService` 1 インスタンスが両 interface を提供するため、Service dispose も **1 回** で足りる。
 
-Mobile では `MediaKitPlaybackService` と `PlatformAudioOutputService` が別インスタンスとなりうる。その場合も **各 concrete service の dispose 責務は Application 層 1 箇所** に集約し、Controller からの二重 dispose を禁止する。
-
-最終的な dispose owner（どの Widget / オブジェクトが `dispose()` を呼ぶか）は、実装 Phase 前の Application Composition 設計で確定する。
+Mobile では `MediaKitPlaybackService` と `PlatformAudioOutputService` が別インスタンスとなりうる。その場合も **各 concrete service の dispose 責務は Composition Root 1 箇所** に集約し、Controller からの二重 dispose を禁止する。
 
 ### 9.4 起動時復元手順
 
@@ -593,7 +579,7 @@ Playback Blocking Error（[media-playback.md](media-playback.md) §13）へ統�
 |------|-----|----------|
 | デバイス列挙失敗 | `audioDevices` 取得不可 | **Non-blocking**。Settings UI に警告。再生は継続 |
 | デバイス切替失敗 | `setAudioDevice` 例外 | **Non-blocking**。選択 UI にインラインエラー。前回成功状態を表示 |
-| 選択中デバイス消失 | 保存 ID が一覧にない | **自動フォールバック**（§2.5）。Informational 通知可 |
+| 選択中デバイス消失 | 保存 ID が一覧にない | Phase D: **自動フォールバック**（§2.5）。Phase C: Non-blocking error |
 | OS route picker 表示失敗 | Android / iOS picker 起動不可 | **Non-blocking**。ボタン付近にエラー表示 |
 
 ### 10.2 UI フィードバック
@@ -623,7 +609,7 @@ enum AudioOutputErrorType {
 
 ### 11.1 Settings 向け翻訳キー候補（未実装）
 
-Flutter gen-l10n 向け **camelCase** キー候補。`.` 区切りは使用しない。Settings UI 実装 Phase（Phase C 等）で ARB へ追加する。
+Phase C 詳細キー案は [audio-output-settings.md](audio-output-settings.md) §16。以下は Android / iOS 含む全体向け候補。
 
 | キー | 用途 | 例（ja 参考） |
 |------|------|---------------|
@@ -660,7 +646,7 @@ Phase B + G ──▶ Windows 起動時復元完成
 |-------|------|------|------|
 | **A** | 共通 Model / `AudioOutputService` 抽象 / Capability | **Implemented** | なし |
 | **B** | Windows `MediaKitPlaybackService` が `AudioOutputService` も実装 | **Implemented** | A |
-| **C** | Windows Settings UI | 未実装 | A, B |
+| **C** | Windows Settings UI + `AudioOutputController` + Composition wiring | **Design Complete**（Launcher: Pending Bottom Control integration） | A, B |
 | **D** | Windows hot unplug / fallback | 未実装 | B |
 | **E** | Android platform output picker | 未実装 | A |
 | **F** | iOS `AVRoutePickerView` 組み込み | 未実装 | A |

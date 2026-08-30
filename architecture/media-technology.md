@@ -177,7 +177,7 @@ media_kit Video Widget
 - Video Surface を Composition Root から注入する
 - Presentation は Native VideoController を Widget Test で必須にしない（Fake Surface 注入で状態 UI を検証可能）。テスト実装の細部は本文書の対象外
 
-### Application Composition（Phase 2-4）
+### Application Composition（Phase 2-4 — Current）
 
 `NainaiApp` は StatefulWidget。Application lifetime で次を 1 組だけ生成する（Widget build ごとには生成しない）。
 
@@ -185,9 +185,26 @@ media_kit Video Widget
 - `MediaKitPlaybackService`
 - `MediaController`
 
-`NainaiApp.dispose` では `MediaController.dispose()` を呼ぶ。
+**Current dispose（実装済み）:**
 
-MediaController が MediaPlaybackService の dispose まで担当するため、Playback Service を Application 側から二重 dispose しない。
+```text
+NainaiApp.dispose()
+    └─ MediaController.dispose()
+           ├─ StreamSubscription 等を cancel
+           ├─ MediaPlaybackService.dispose()
+           └─ super.dispose()
+```
+
+**Current ownership:** 実質 `MediaController` が注入 `MediaPlaybackService` の dispose まで担当する。Playback Service を Application 側から二重 dispose しない。
+
+### Application Composition（Phase C 以降 — 設計確定・未実装）
+
+Audio Output Phase C により ownership を移行する。詳細は [audio-output-settings.md](../design/audio-output-settings.md) §6。
+
+- 同一 `MediaKitPlaybackService` 1 instance を `MediaController` + `AudioOutputController` へ共有注入
+- **`NainaiApp` が `MediaKitPlaybackService` の唯一 owner**
+- `MediaController.dispose()` から **`MediaPlaybackService.dispose()` を除去**
+- `NainaiApp.dispose()` 順序: `AudioOutputController` → `MediaController` → `MediaKitPlaybackService`
 
 ### Load（実装確認）
 

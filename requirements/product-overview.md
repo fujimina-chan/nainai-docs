@@ -83,7 +83,7 @@ Android と iOS で同じ識別子体系（`com.fyna.nainai`）を使用しま�
 | 出力先設定 | ファイル種別ごとに出力先を指定する |
 | テーマ選択 | Base Palette / Accent の独立選択（Architecture は先行定義） |
 | UI 言語 | **Localization 基盤実装済み**（[localization.md](../design/localization.md)）。標準表示は **日本語**。`ja` / `en` ARB 対応。システム Locale 追従・言語切替 UI・Locale 永続保存は **未実装** |
-| 音声出力デバイス | Phase A 共通 Model / Service 抽象 + **Phase B Windows media_kit Service 実装済み**（[audio-output.md](../design/audio-output.md)、client `c3239f3`）。**Settings UI・Controller wiring・永続化・Android/iOS は未実装**。ユーザーが Settings から出力デバイスを選択できる状態ではない |
+| 音声出力デバイス | Phase A/B Windows Service **実装済み**（client `c3239f3`）。Phase C Settings subsystem **[設計確定・実装未着手](../design/audio-output-settings.md)**（Launcher 配置: Pending Bottom Control integration）。Settings からのユーザー選択・永続化・Android/iOS は **未実装** |
 | 問題報告 | Unknown Error からの報告（Phase 2 では未実装） |
 
 ## 設計方針
