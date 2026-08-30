@@ -9,6 +9,7 @@ nainai アプリ全体の Settings Presentation Entry Point、共通 preference 
 - [UI Localization](localization.md)
 - [Design System](design-system.md)
 - [Phase 2 UI](phase2-ui.md)
+- [Common Settings Concrete Persistence](settings-persistence.md)
 - [Application Composition](../architecture/media-technology.md)
 
 ## 1. 位置づけ
@@ -18,11 +19,11 @@ nainai アプリ全体の Settings Presentation Entry Point、共通 preference 
 | スコープ | Settings Shell / General Section / `AppSettings` / `SettingsController` / Persistence 抽象 / Tooltip Policy |
 | 第一設定項目 | `showTooltips`（Tooltip 表示 ON / OFF） |
 | Audio Output との関係 | **置き換えではない**。Audio Output Phase C は [audio-output-settings.md](audio-output-settings.md) が正本 |
-| 状態 | **Core Design Complete** / **Concrete Persistence Pending** / **未実装** |
+| 状態 | **Core Implemented**（client `4109a13` — Model / Controller / interface）/ **Concrete Persistence Design Complete** / **Concrete Implementation Not Implemented** |
 
 **Core Design Complete の範囲:** Settings 責務 / 画面構造 / Section 構造 / Model / Controller / Persistence Interface / **async consistency（revision / serialized save）** / Tooltip 仕様 / Accessibility / Localization キー設計 / Application Composition / ownership / テスト方針 / Audio Output 境界 / Launcher Navigation contract。
 
-**Concrete Persistence Pending:** 永続化 concrete 実装（package 選定・storage key 実装詳細）は client dependencies と全 MVP プラットフォーム確認後、実装 Phase 開始時に最終決定する（§5.3）。**Persistence Interface と async consistency 仕様（§4.4 / §12）は本設計で確定。**
+**Concrete Persistence:** **[Design Complete — `shared_preferences`](settings-persistence.md)**。**Implementation Not Implemented**。永続化 Interface と async consistency 仕様（§4.4 / §12）は本書で確定済み。
 
 **Settings Launcher physical placement:** **Design Complete**（§15）。**Settings Launcher implementation:** **Not Implemented**。
 
@@ -118,7 +119,7 @@ class SettingsController extends ChangeNotifier {
   SettingsController({required SettingsRepository repository});
 
   AppSettings get settings;           // 現在 UI が反映すべき desired state
-  AppSettings get lastPersistedSettings; // 最後に永続化成功した snapshot（§4.4）
+  AppSettings get lastPersistedSettings; // save() 正常完了 snapshot（§4.4 / settings-persistence.md §10.2）
   SettingsError? get error;             // null = なし。Non-blocking
   bool get isLoading;                   // 起動時 initial load 進行中（§11 / §12.3）
   bool get isSaving;                    // persistence write 進行中（§12.3）
@@ -151,7 +152,7 @@ Controller 内部概念（実装 Phase）:
 | 概念 | 説明 |
 |------|------|
 | `settings` | 現在 UI / Tooltip Policy が反映すべき **desired** state |
-| `lastPersistedSettings` | 最後に **永続化成功** した snapshot |
+| `lastPersistedSettings` | **`SettingsRepository.save()` 正常完了時点**の snapshot（fsync 保証は **含まない** — [settings-persistence.md](settings-persistence.md) §10.2） |
 | `_revision` | monotonic revision / generation。ユーザー mutation ごとに increment |
 
 **ユーザー変更フロー:**
@@ -199,29 +200,30 @@ Controller 自身へ Persistence を直書きしない。
 
 ```dart
 abstract class SettingsRepository {
-  /// 永続化値を読込。未保存・破損時は default `AppSettings` 相当を返す（§11）。
+  /// Loads persisted settings.
+  /// Missing / invalid field → default fallback (success).
+  /// Storage read failure → throw.
+  /// See settings-persistence.md §8–§9.
   Future<AppSettings> load();
 
-  /// 保存。失敗時は throw または Result 型で Controller が Non-blocking error へ変換。
+  /// Persists settings. Throws on write failure.
   Future<void> save(AppSettings settings);
 }
 ```
 
 設定単位 API（`loadShowTooltips()` 等）への分割は **初期実装では不要**。`AppSettings` 単位の load / save で十分。
 
-### 5.3 Concrete 技術（Pending）
+### 5.3 Concrete 技術（Design Complete）
 
-| 候補 | 概要 |
+**正式採用:** [`shared_preferences`](settings-persistence.md) — `SharedPreferencesSettingsRepository` / key `settings.showTooltips` / API **`SharedPreferencesAsync`**. Android minSdk **24** 互換確認済み（[settings-persistence.md](settings-persistence.md) §1.2）。
+
+| 項目 | 状態 |
 |------|------|
-| A. 標準 key-value package（例: `shared_preferences` 等） | Flutter エコシステムで一般的。Windows / Android / iOS 対応要確認 |
-| B. 独自 file persistence（例: JSON file in app support dir） | package 依存を減らせる。path / 権限 / 同期の実装コスト |
+| Technology selection | **Design Complete** — [settings-persistence.md](settings-persistence.md) |
+| Concrete implementation | **Not Implemented** |
+| 候補比較 | 本書 §5.3 旧 Pending 記載は [settings-persistence.md](settings-persistence.md) §5 へ移管 |
 
-**本設計時点の確定:**
-
-- **`SettingsRepository` interface は確定**
-- **Concrete implementation は実装 Phase 開始時に最終決定**
-
-実装 Phase 開始時に nainai-client の `pubspec.yaml` dependencies、Windows / Android / iOS 初期 MVP 対象での動作、既存 Infrastructure 方針を確認し、採用理由を docs へ追記する。**調査不足の段階で `shared_preferences` 等を無条件確定しない。**
+**不採用:** 独自 JSON file persistence（MVP 1 bool に対しコスト対効果不足 — [settings-persistence.md](settings-persistence.md) §5.2–§5.4）。
 
 ### 5.4 Persistence key（概念）
 
@@ -239,8 +241,8 @@ abstract class SettingsRepository {
 
 | 区分 | 内容 |
 |------|------|
-| **現在の client 実装** | Visual Tooltip は **Always enabled**（常時有効）。Common Settings による ON/OFF 制御は **存在しない**。`AppSettings.showTooltips` の runtime 参照も **存在しない** |
-| **将来設計**（Core Design Complete / **Not Implemented**） | `AppSettings.showTooltips`（default **`true`**）で Visual Tooltip の ON/OFF を制御。Semantics label は ON/OFF に関係なく **維持** |
+| **現在の client 実装（`4109a13`）** | `AppSettings` / `SettingsController` / `SettingsRepository` interface **Implemented**。Visual Tooltip は Presentation 上 **Always enabled**（`TooltipPolicy` 未配線）。Concrete `SettingsRepository` **Not Implemented** |
+| **将来設計**（Tooltip Policy 配線後） | `AppSettings.showTooltips`（default **`true`**）で Visual Tooltip ON/OFF。Semantics label は ON/OFF に関係なく **維持** |
 
 **禁止:** 「現在 Tooltip が有効なのは `showTooltips == true` だから」と記述すること。
 
@@ -459,7 +461,7 @@ Switch は次を認識可能にする:
 ### 11.5 永続化
 
 - Tooltip ON / OFF は **再起動後も維持**
-- Concrete storage は §5.3 Pending
+- Concrete storage — [settings-persistence.md](settings-persistence.md)（**Design Complete** / **Not Implemented**）
 - Audio Output Preference 永続化（Phase G）とは **別 Repository / 別 key namespace** を維持
 
 ## 12. Error policy
@@ -591,8 +593,8 @@ Settings Launcher の **物理配置** は本節で **Design Complete**。Presen
 |------|------|
 | Launcher **physical placement** | **Design Complete** |
 | Launcher **implementation** | **Not Implemented** |
-| Common Settings Core | **Core Design Complete** / **Not Implemented** |
-| Tooltip ON/OFF | **Design Complete** / **Not Implemented** |
+| Common Settings Core | client `4109a13` **Implemented** |
+| Tooltip ON/OFF wiring | **Design Complete** / **Not Implemented** |
 | Audio Output Settings Section | Phase C **Design Complete** / **Not Implemented**（client 正式 main 反映まで Implemented にしない） |
 
 ### 15.1 正式配置（確定）
@@ -791,11 +793,11 @@ Audio Output Section の Widget test は [audio-output-settings.md](audio-output
 
 | 項目 | 状態 |
 |------|------|
-| Common Settings Core | **Core Design Complete** / **Not Implemented** |
-| Tooltip ON / OFF | **Design Complete** / **Not Implemented** |
-| **現在の Visual Tooltip** | **Always enabled**（client 実装。Common Settings 制御なし） |
+| Common Settings Core | client `4109a13` **Implemented**（Model / Controller / interface） |
+| Tooltip ON / OFF（Policy / UI wiring） | **Design Complete** / **Not Implemented** |
+| **現在の Visual Tooltip** | **Always enabled**（`TooltipPolicy` 未配線） |
 | **将来 `showTooltips` default** | **`true`**（導入後の初回 / 未保存時） |
-| Concrete Persistence | **Pending** implementation-time technology selection |
+| Concrete Persistence | **[Design Complete — Selected](settings-persistence.md)** / **Not Implemented** |
 | Settings Launcher physical placement | **Design Complete**（§15） |
 | Settings Launcher implementation | **Not Implemented** |
 | Audio Output Phase C | **Design Complete**（[audio-output-settings.md](audio-output-settings.md)）/ **未実装** |
