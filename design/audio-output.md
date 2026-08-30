@@ -1,8 +1,13 @@
 # 音声出力デバイス選択（詳細設計）
 
-将来実装する **設定 → オーディオ → 音声出力デバイス** 機能の詳細設計正本。
+**設定 → オーディオ → 音声出力デバイス** 機能の詳細設計正本。
 
-**Phase A（共通 Model / Service 抽象 / Capability）** は nainai-client に実装済み（commit `4a34d85`）。本ドキュメントは設計正本として Phase A 以降の実装状態も記録する。Settings UI・platform 実装・永続化は未実装。
+| Phase | 内容 | client commit | 状態 |
+|-------|------|---------------|------|
+| **A** | 共通 Model / Service 抽象 / Capability | `4a34d85` | **Implemented** |
+| **B** | Windows `MediaKitPlaybackService` が `AudioOutputService` も実装 | `c3239f3` | **Implemented** |
+
+本ドキュメントは設計正本として実装状態も記録する。**Phase B 完了時点でも、ユーザーが Settings 画面から出力デバイスを選択できる状態ではない。** Settings UI・`AudioOutputController`・Application Composition wiring・hot unplug fallback・Android / iOS 実装・永続化は未実装。
 
 関連:
 
@@ -37,7 +42,10 @@
 - Equalizer / 空間オーディオ等の拡張
 - 設定画面全体の Presentation 確定
 - 設定永続化 library の選定
-- Phase B 以降の platform 実装・Settings UI
+- Settings UI / `AudioOutputController` / Application Composition wiring（Phase C 以降）
+- Android / iOS platform 実装（Phase E / F）
+- hot unplug fallback（Phase D）
+- 設定永続化（Phase G）
 
 ## 2. Windows 設計（確定候補）
 
@@ -135,6 +143,70 @@ media_kit / mpv は audio output reload により切替可能なため、**再�
 ### 2.7 Volume との関係
 
 出力先変更時も [media-playback.md](media-playback.md) の `MediaState.volume` / `MediaKitVolumeMapper` / Mute 設計は変更しない。ユーザーが設定したアプリ内 Volume を維持する。
+
+### 2.8 Phase B 実装（Windows）
+
+Phase B 実装済み（client commit `c3239f3`）。Windows では `MediaKitPlaybackService` が `MediaPlaybackService` と `AudioOutputService` の両 interface を、**同一 `_player` 1 個** で実装する。Audio Output 専用 Player は追加生成しない。
+
+#### Capability（実装値）
+
+| Capability | 値 |
+|------------|-----|
+| `supportsDeviceEnumeration` | `true` |
+| `supportsDirectDeviceSelection` | `true` |
+| `supportsSystemRoutePicker` | `false` |
+| `supportsPersistentDeviceId` | `true` |
+
+#### デバイス列挙
+
+media_kit 1.2.6 公開 API:
+
+- `Player.state.audioDevices`
+- `Player.stream.audioDevices`
+
+Domain 変換:
+
+| media_kit | Domain |
+|-----------|--------|
+| `AudioDevice.name` | `AudioOutputDevice.id` |
+| `AudioDevice.description` | `AudioOutputDevice.label` |
+
+`availableDevices` / `availableDevicesStream` から **`name == 'auto'` は除外** する。System Default は独立した Preference として扱う。
+
+#### システム既定
+
+media_kit `AudioDevice.auto()`（`name == 'auto'`）を System Default とする。
+
+`currentSelection` / `currentSelectionStream` では `AudioOutputPreference.systemDefault()` へ変換する。
+
+`selectSystemDefault()` は内部で `AudioDevice.auto()` を `setAudioDevice()` へ渡す。
+
+#### 特定デバイス選択
+
+`selectDevice(deviceId)` の確定動作:
+
+1. `deviceId` を trim
+2. trim 後が空文字なら `ArgumentError`
+3. trim 後が `'auto'` なら `ArgumentError`（System Default は `selectSystemDefault()` を使用）
+4. 現在の media_kit device 一覧から specific device を検索
+5. 該当する実 `AudioDevice` を `setAudioDevice()` へ渡す
+6. unknown `deviceId` は `ArgumentError`
+7. System Default へ **勝手に fallback しない**
+
+例:
+
+- `selectDevice('auto')` → `ArgumentError`
+- `selectDevice('  auto  ')` → trim 後 `ArgumentError`
+
+成功時、`currentSelection` / `currentSelectionStream` は `AudioOutputPreference.specificDevice(...)` へ変換する。
+
+#### System Route Picker
+
+`supportsSystemRoutePicker == false`。`openSystemRoutePicker()` 呼び出しは `UnsupportedError`。
+
+#### Stream / dispose
+
+追加の manual subscription は持たない。`_player.stream.audioDevices` / `_player.stream.audioDevice` を Domain へ map して公開する。既存 Player ownership / dispose 仕様は変更していない。
 
 ## 3. Android 設計
 
@@ -262,10 +334,10 @@ class AudioOutputPreference {
 - trim 後が空文字の `deviceId` は **禁止**（`ArgumentError`）
 - 復元時は `deviceId` を正本とし、一覧から label を再解決する。再解決不能ならフォールバック（§2.5）
 
-| フィールド | Windows（将来） | Android / iOS |
-|------------|-----------------|---------------|
+| フィールド | Windows（Phase B） | Android / iOS |
+|------------|-------------------|---------------|
 | `mode` | `systemDefault` / `specificDevice` | 原則 `systemDefault` |
-| `deviceId` | 実装時 `AudioDevice.name` にマップ | 通常 `null` |
+| `deviceId` | `AudioDevice.name` にマップ | 通常 `null` |
 | `deviceLabel` | 表示用キャッシュ | 通常 `null` |
 
 ### 5.2 AudioOutputDevice（Phase A 確定）
@@ -279,7 +351,7 @@ class AudioOutputDevice {
 
 - **identity は `id` のみ**。`==` / `hashCode` も `id` 基準
 - 同一 `id` で `label` が変わっても同一 device として扱う
-- Windows 実装時、`id` は media_kit `AudioDevice.name` にマップする想定（Phase B）
+- Windows（Phase B）では `id` は media_kit `AudioDevice.name` にマップする
 
 ## 6. Platform Capability
 
@@ -294,8 +366,8 @@ class AudioOutputCapabilities {
 }
 ```
 
-| Capability | Windows（設計） | Android | iOS |
-|------------|-----------------|---------|-----|
+| Capability | Windows（Phase B 実装） | Android | iOS |
+|------------|-------------------------|---------|-----|
 | `supportsDeviceEnumeration` | true | false | false |
 | `supportsDirectDeviceSelection` | true | false | false |
 | `supportsSystemRoutePicker` | false | true | true |
@@ -340,7 +412,9 @@ Phase A 共通層は次へ **依存しない**:
 - Localization
 - Platform 判定（`dart:io` 等）
 
-`MediaController` への追加もなし。Persistence も未実装。platform 具象実装は Phase B 以降。
+`MediaController` への追加もなし。Persistence も未実装。
+
+Phase B（Windows）では `MediaKitPlaybackService` が抽象 `AudioOutputService` を同一 `_player` で実装する。Android / iOS の platform 具象実装は Phase E / F 以降。
 
 ### 7.2 MediaPlaybackService との関係 — 3 案比較
 
@@ -354,9 +428,9 @@ Phase A 共通層は次へ **依存しない**:
 | B | Application 層で `Player` を生成し、別 Service 2 つへ注入 | 具象 Service を物理分割できる | Application へ raw `Player` が露出。共有 wiring・dispose 境界が複雑 |
 | C | 別 `MediaKitAudioOutputService` が内部 Player access を限定的共有 | B より Application 露出は少ない | 「限定的」の境界が曖昧になりやすい |
 
-#### 推奨（Windows）: 案 A — 単一 `MediaKitPlaybackService` が両 interface を実装
+#### 推奨（Windows）: 案 A — 単一 `MediaKitPlaybackService` が両 interface を実装（Phase B 実装済み）
 
-抽象 interface は `MediaPlaybackService` と `AudioOutputService` に分離する。Windows では 1 つの `MediaKitPlaybackService` が両方を実装する。
+抽象 interface は `MediaPlaybackService` と `AudioOutputService` に分離する。Windows では 1 つの `MediaKitPlaybackService` が両方を実装する（Phase B、`c3239f3`）。
 
 ```text
 MediaPlaybackService          AudioOutputService
@@ -416,19 +490,21 @@ Settings 画面実装時に `SettingsController` が `AudioOutputController` を
 
 ## 9. Application Composition
 
-### 9.1 現状（Phase 2-3）
+### 9.1 現状（Phase B — Windows Service のみ）
 
 ```text
 NainaiApp
   ├─ FileSelectorMediaSelectionService
-  ├─ MediaKitPlaybackService()   ← 内部で Player 生成
-  ├─ MediaController
+  ├─ MediaKitPlaybackService()   ← MediaPlaybackService + AudioOutputService（同一 _player）
+  ├─ MediaController            ← MediaPlaybackService として注入
   └─ MediaScreen
 ```
 
-`Player` は `MediaKitPlaybackService` 内部で生成されている。
+- `Player` は `MediaKitPlaybackService` 内部で生成・所有する
+- Windows では `MediaKitPlaybackService` が `AudioOutputService` も実装済み（Phase B）
+- **`AudioOutputController` / Settings UI / Application Composition wiring は未実装** — Service API は存在するが、ユーザー向け Settings からは選択できない
 
-### 9.2 将来構成（音声出力追加後）
+### 9.2 将来構成（Settings UI / Controller wiring 追加後）
 
 #### Windows
 
@@ -583,7 +659,7 @@ Phase B + G ──▶ Windows 起動時復元完成
 | Phase | 内容 | 状態 | 依存 |
 |-------|------|------|------|
 | **A** | 共通 Model / `AudioOutputService` 抽象 / Capability | **Implemented** | なし |
-| **B** | Windows `MediaKitPlaybackService` が `AudioOutputService` も実装 | 未実装 | A |
+| **B** | Windows `MediaKitPlaybackService` が `AudioOutputService` も実装 | **Implemented** | A |
 | **C** | Windows Settings UI | 未実装 | A, B |
 | **D** | Windows hot unplug / fallback | 未実装 | B |
 | **E** | Android platform output picker | 未実装 | A |
@@ -608,6 +684,17 @@ Phase A は Localization 統合後の nainai-client 上で次を確認済み（2
 | `flutter test` | 145 tests PASS |
 
 client commit: `4a34d85` — `feat: 音声出力デバイスの共通基盤を追加`
+
+### Phase B 検証（client）
+
+Phase B は client main `c3239f3` 上で次を確認済み:
+
+| コマンド | 結果 |
+|----------|------|
+| `flutter analyze` | No issues found |
+| `flutter test` | 165 tests PASS |
+
+client commit: `c3239f3` — `feat: Windows音声出力デバイス切り替え基盤を実装`
 
 ## 13. 未確定事項
 
