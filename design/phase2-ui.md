@@ -110,7 +110,7 @@ Windows では Audio / Video 共通で、Playback Controls を **`Scaffold.botto
 
 Breakpoint 正本: [design-system.md](design-system.md)（desktop 800px、compact landscape `height ≤ 480` かつ `width > height`、single-row min width 720px）。
 
-**Tooltip 将来仕様:** 現在 Tooltip は常時有効。Settings から Tooltip 表示 ON/OFF を切り替える要件は **未実装**（Common Settings 別レーンで設計中。本書では重複定義しない）。
+**Tooltip — 現在と将来:** 現在 client は Visual Tooltip **Always enabled**。Common Settings / `showTooltips` による ON/OFF は **[Design Complete](settings.md) / Not Implemented**（§6.0）。本書では重複定義しない。
 
 **検証（client `68ff1b4`）:** `flutter analyze` PASS / `flutter test` 214 tests PASS / Windows 実機確認 OK。
 
@@ -295,10 +295,85 @@ Volume コントロールは Slider + 整数パーセント表示 + Volume ア�
 
 Phase 2 UI に次を先行表示しない。
 
-- Editor Navigation / Playlist / Library / Settings
+- Editor Navigation / Playlist / Library
+- Settings Screen 本体（General / Audio Section — **Settings Launcher 除く**。Launcher は §14）
 - Timeline / Equalizer / Compressor 等
 
-## 14. 未確定事項
+## 14. Settings Launcher（App-level — Design Complete）
+
+正本: [settings.md](settings.md) §15。**Settings Launcher implementation:** **Not Implemented**。
+
+### 14.1 配置（確定）
+
+| 項目 | 内容 |
+|------|------|
+| 位置 | **App-level Top-right Utility Button**（SafeArea 内右上） |
+| アイコン | `Icons.settings_rounded` 相当（第一候補） |
+| 所属 | Media content **外側** の App Utility Layer。**Bottom Panel / Playback Controls の一部ではない** |
+
+```text
+Scaffold
+├ body → Stack
+│   ├ Main Content
+│   └ Top-right App Utility Layer → Settings IconButton
+└ bottomNavigationBar → DesktopMediaBottomPanel（Media 状態に応じて）
+```
+
+常設 AppBar（44〜56px 縦消費）は **採用しない**。App Utility Layer は Media を **大きく覆う常設 Overlay** に **しない**（§14.6）。
+
+### 14.2 Bottom Panel との分離
+
+[§4.1](#41-windows-固定-bottom-panel--implemented) の `DesktopMediaBottomPanel` 内へ Settings Launcher を **配置しない**。Settings = App level / Playback = Media level。
+
+### 14.3 全状態でアクセス可能
+
+| 条件 | Launcher |
+|------|----------|
+| Media: Unselected / Loading / Ready / Playing / Paused / Stopped / Blocking Error / Non-blocking Error | **常に利用可能** |
+| Bottom Panel: expanded / collapsed / 非表示 | **常に利用可能** |
+
+Unselected / Blocking Error でも Error UI **内部** へ Launcher を埋め込まない。
+
+### 14.4 compact landscape
+
+844×390 / 800×400 / 667×375 等でも右上 Launcher を維持。compact だから Bottom Panel へ移動 **しない**。§4.1 の 1 段 / 2 段 fallback と **独立**（Panel を **3 段化しない**）。
+
+### 14.5 Mobile（Android / iOS）
+
+App-level 右上 Settings を基本。SafeArea / system inset 必須。Windows Bottom Panel パターンを Mobile へ **持ち込まない**（§7・§8 参照）。
+
+### 14.6 App Utility Layer と Media との重なり
+
+| 条件 | 内容 |
+|------|------|
+| 視覚領域 | Launcher は **必要最小限** |
+| Hit target | **44 logical px 以上** |
+| 配置 | SafeArea 内右上、**既存 Spacing Token 内** |
+| Overlay | Media content を **大きく覆う常設 Overlay にしない** |
+| Video | **広い範囲を覆わない** |
+| 競合 | Playback Controls、Non-blocking Error Banner 等と **競合しない** |
+| compact landscape | Media 表示領域を **著しく奪わない** |
+| 禁止 | **44〜56px 全幅 AppBar**、**大きな常設背景 Panel** |
+
+### 14.7 Utility Button surface
+
+Video 上に Launcher が位置する場合でも視認できるよう、既存 Theme の **surface token** による **小さい utility surface**（IconButton + 必要最小限 background）を **許可**。**独自色は禁止**。
+
+### 14.8 Media 中央配置との関係
+
+client `68ff1b4` で確定した、Audio / Video を **Bottom Panel 除く領域で中央配置** する基本仕様を、Launcher 追加のために **不用意に変更しない**。Launcher は App Utility であり Media レイアウト再設計の理由に **しない**。重なり問題時は utility inset / minimal padding で **局所調整**。**Media 全体を大きく下へ押し下げる設計は禁止**。
+
+### 14.9 視覚・A11y / Tooltip
+
+- SafeArea + Spacing Token、hit target **44 logical px 以上**
+- **現在（client）:** Visual Tooltip **Always enabled**（`showTooltips` runtime 参照なし）
+- **将来:** Tooltip / Semantics label は 設定 / Settings（ARB `settings`）。`showTooltips == false` 時は Visual Tooltip のみ非表示、Semantics **維持**（[settings.md](settings.md) §6.3）
+
+### 14.10 Navigation
+
+Activate → **`openSettings()`** → Common Settings Shell（General + Audio）。**Gear → `AudioOutputSettingsSection` 直結禁止**。
+
+## 15. 未確定事項
 
 - Static Audio Placeholder の具体ビジュアル
 - Banner の自動消失時間・clear 専用 UI / API

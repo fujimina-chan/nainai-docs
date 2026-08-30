@@ -83,8 +83,8 @@ Android と iOS で同じ識別子体系（`com.fyna.nainai`）を使用しま�
 | 出力先設定 | ファイル種別ごとに出力先を指定する |
 | テーマ選択 | Base Palette / Accent の独立選択（Architecture は先行定義） |
 | UI 言語 | **Localization 基盤実装済み**（[localization.md](../design/localization.md)）。標準表示は **日本語**。`ja` / `en` ARB 対応。システム Locale 追従・言語切替 UI・Locale 永続保存は **未実装** |
-| アプリ共通 Settings | **[Core Design Complete](../design/settings.md)**（Tooltip 表示 ON/OFF 等）。Persistence concrete・実装は **未着手** |
-| 音声出力デバイス | Phase A/B Windows Service **実装済み**（client `c3239f3`）。Phase C Settings subsystem **[設計確定・実装未着手](../design/audio-output-settings.md)**（Launcher: **Launcher placement design pending**）。Settings からのユーザー選択・永続化・Android/iOS は **未実装** |
+| アプリ共通 Settings | **[Core Design Complete](../design/settings.md)**（Tooltip ON/OFF 等 **Design Complete / Not Implemented**）。Visual Tooltip **現在 Always enabled**。Settings Launcher placement **Design Complete** / implementation **Not Implemented**。Persistence concrete・実装は **未着手** |
+| 音声出力デバイス | Phase A/B Windows Service **実装済み**（client `c3239f3`）。Phase C Settings subsystem **[設計確定・実装未着手](../design/audio-output-settings.md)**（Launcher placement: **[Design Complete](../design/settings.md) §15** / implementation **Not Implemented**）。Settings からのユーザー選択・永続化・Android/iOS は **未実装** |
 | Windows 再生 UI | 固定 Bottom Panel（Audio / Video 共通）**実装済み**（client `68ff1b4`、[phase2-ui.md](../design/phase2-ui.md) §4.1） |
 | 問題報告 | Unknown Error からの報告（Phase 2 では未実装） |
 

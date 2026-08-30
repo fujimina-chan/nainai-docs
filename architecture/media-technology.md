@@ -216,6 +216,7 @@ Presentation 詳細は [phase2-ui.md](../design/phase2-ui.md) §4.1 を正とす
 | 対象 | Windows + Audio / Video + playback 可能 status |
 | body | Bottom Panel 除く領域で Media 中央配置 |
 | narrow | Windows でも Mobile layout に **フォールバックしない** |
+| Settings Launcher | body 内 **Stack** の Top-right App Utility Layer（[settings.md](../design/settings.md) §15 — **Design Complete** / **Not Implemented**）。Bottom Panel **外**。Media を **大きく覆う常設 Overlay にしない** |
 
 ### Application Composition（共通 Settings — 設計確定・未実装）
 

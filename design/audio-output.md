@@ -647,7 +647,7 @@ Phase B + G ──▶ Windows 起動時復元完成
 |-------|------|------|------|
 | **A** | 共通 Model / `AudioOutputService` 抽象 / Capability | **Implemented** | なし |
 | **B** | Windows `MediaKitPlaybackService` が `AudioOutputService` も実装 | **Implemented** | A |
-| **C** | Windows Settings UI + `AudioOutputController` + Composition wiring | **Design Complete**（Launcher: **Launcher placement design pending**） | A, B |
+| **C** | Windows Settings UI + `AudioOutputController` + Composition wiring | **Design Complete**（Launcher placement: **[Design Complete](settings.md) §15** / implementation **Not Implemented**） | A, B |
 | **D** | Windows hot unplug / fallback | 未実装 | B |
 | **E** | Android platform output picker | 未実装 | A |
 | **F** | iOS `AVRoutePickerView` 組み込み | 未実装 | A |

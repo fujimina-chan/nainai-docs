@@ -24,7 +24,9 @@ nainai アプリ全体の Settings Presentation Entry Point、共通 preference 
 
 **Concrete Persistence Pending:** 永続化 concrete 実装（package 選定・storage key 実装詳細）は client dependencies と全 MVP プラットフォーム確認後、実装 Phase 開始時に最終決定する（§5.3）。**Persistence Interface と async consistency 仕様（§4.4 / §12）は本設計で確定。**
 
-**未確定（Launcher のみ）:** Settings Launcher 物理配置 — **Launcher placement design pending**（§15）。Navigation contract / Settings Shell / 「Settings を開く機能が必要」までは本設計で確定。物理配置の具体位置は [audio-output-settings.md](audio-output-settings.md) §14 と連携して決定する。
+**Settings Launcher physical placement:** **Design Complete**（§15）。**Settings Launcher implementation:** **Not Implemented**。
+
+Navigation contract / Settings Shell / Tooltip Policy 等の Core Design は本書が正本。Launcher Presentation 詳細は [phase2-ui.md](phase2-ui.md) §14。
 
 ## 2. Settings 全体構造
 
@@ -73,9 +75,9 @@ Settings（Shell）
 
 | フィールド | 型 | デフォルト | 説明 |
 |------------|-----|------------|------|
-| `showTooltips` | `bool` | **`true`** | Visual Tooltip 表示 ON / OFF |
+| `showTooltips` | `bool` | **`true`** | Visual Tooltip 表示 ON / OFF（**将来設計**。client 現状は §6 参照） |
 
-**`showTooltips` デフォルト `true` を正式確定する理由:** 初回利用時の UI discoverability（Icon 説明）を維持するため。
+**`showTooltips` デフォルト `true`（将来設計）を正式確定する理由:** 初回利用時の UI discoverability（Icon 説明）を維持するため。client 現状では `AppSettings` / runtime 参照は **未実装** で、Visual Tooltip は **常時有効**（§6）。
 
 ### 3.3 拡張方針
 
@@ -233,19 +235,28 @@ abstract class SettingsRepository {
 
 ## 6. Tooltip 表示 ON / OFF（正式仕様）
 
-### 6.1 設定名（確定）
+### 6.0 現在の client 実装と将来設計の区別（必須）
+
+| 区分 | 内容 |
+|------|------|
+| **現在の client 実装** | Visual Tooltip は **Always enabled**（常時有効）。Common Settings による ON/OFF 制御は **存在しない**。`AppSettings.showTooltips` の runtime 参照も **存在しない** |
+| **将来設計**（Core Design Complete / **Not Implemented**） | `AppSettings.showTooltips`（default **`true`**）で Visual Tooltip の ON/OFF を制御。Semantics label は ON/OFF に関係なく **維持** |
+
+**禁止:** 「現在 Tooltip が有効なのは `showTooltips == true` だから」と記述すること。
+
+### 6.1 設定名（将来設計 — 確定）
 
 | 項目 | 値 |
 |------|-----|
 | Model field | `showTooltips` |
 | 型 | `bool` |
-| デフォルト | **`true`** |
+| デフォルト | **`true`**（`showTooltips` **導入後** の初回 / 未保存時。client 現状は §6.0） |
 
-### 6.2 挙動（確定）
+### 6.2 挙動（将来設計 — 確定）
 
 | 値 | Visual Tooltip |
 |----|----------------|
-| `true`（ON） | 現在どおり hover / long-press 等で Visual Tooltip を **表示** |
+| `true`（ON） | hover / long-press 等で Visual Tooltip を **表示** |
 | `false`（OFF） | nainai 管理の Visual Tooltip を **表示しない** |
 
 - 変更は **アプリ再起動不要** で **即時反映**（§10）
@@ -268,8 +279,8 @@ OFF でも **維持する:**
 例（概念）:
 
 ```text
-現在:  IconButton(tooltip: 'しまう', ...)
-OFF時: Visual Tooltip 非表示。Semantics label「しまう」は維持
+client 現状:  IconButton(tooltip: 'しまう', ...)   // Visual Tooltip 常時有効
+将来 OFF時:   Visual Tooltip 非表示。Semantics label「しまう」は維持
 ```
 
 ### 6.4 適用範囲
@@ -544,7 +555,7 @@ Audio Output Phase C は共通 Shell 未実装でも Section 単体を Modal / �
 1. `AppSettings` + `SettingsRepository` interface + `SettingsController` + Tooltip Policy
 2. General Section（showTooltips）+ Settings Shell 最小構成
 3. Audio Output Section を Shell へ統合（Phase C）
-4. Settings Launcher physical placement 確定（Presentation 最終設計 — Launcher placement design pending）
+4. Settings Launcher 実装（Presentation — §15 Design Complete / Not Implemented）
 
 ### 13.3 TooltipPolicy の App 全体提供
 
@@ -572,28 +583,142 @@ NainaiApp.dispose()
     5. SettingsRepository — dispose 要否は concrete 実装に従う
 ```
 
-## 15. Settings Launcher と Navigation contract
+## 15. Settings Launcher（App-level Top-right Utility Button）
 
-### 15.1 Pending（物理配置）
+Settings Launcher の **物理配置** は本節で **Design Complete**。Presentation レイアウト詳細は [phase2-ui.md](phase2-ui.md) §14。
 
 | 項目 | 状態 |
 |------|------|
-| Settings Launcher **アイコン / ボタンの最終配置** | **Launcher placement design pending** |
-| 固定 Bottom Panel（client `68ff1b4`） | **実装済み**。Launcher 配置の前提 UI として利用可能 |
-| 物理配置の確定 | Presentation 側の最終設計へ委譲。本 branch では **具体位置を独断確定しない** |
+| Launcher **physical placement** | **Design Complete** |
+| Launcher **implementation** | **Not Implemented** |
+| Common Settings Core | **Core Design Complete** / **Not Implemented** |
+| Tooltip ON/OFF | **Design Complete** / **Not Implemented** |
+| Audio Output Settings Section | Phase C **Design Complete** / **Not Implemented**（client 正式 main 反映まで Implemented にしない） |
 
-### 15.2 確定（Navigation contract）
+### 15.1 正式配置（確定）
 
-Settings 画面自体の開き方は **本設計で確定** する。
+Settings Launcher は **App-level Top-right Utility Button** として配置する。
+
+| 項目 | 内容 |
+|------|------|
+| 責務 | アプリ全体の Settings 入口（Media 選択状態に **非依存**） |
+| アイコン（第一候補） | `Icons.settings_rounded` 相当 |
+| 所属 | **App-level Presentation**。Playback Controls / Bottom Panel / Audio Output UI **ではない** |
+
+```text
+Gear → openSettings() → Common Settings Shell（General + Audio）
+                              └─ Audio → AudioOutputSettingsSection
+```
+
+**禁止:** Gear → `AudioOutputSettingsSection` 直結。
+
+### 15.2 Bottom Panel 内に配置しない（確定）
+
+`DesktopMediaBottomPanel` 内へ Settings Launcher を **配置しない**。
+
+| # | 理由 |
+|---|------|
+| 1 | Settings は Playback 機能ではない |
+| 2 | Bottom Panel は collapse 可能 |
+| 3 | compact landscape では Panel を極力薄くする |
+| 4 | Unselected / Loading / Blocking Error では Playback Controls が **非表示** |
+| 5 | Audio / Video 状態に関係なく Settings へアクセス可能である必要 |
+
+**責務分離:** Settings = **App level** / Playback Controls = **Media level**。
+
+### 15.3 Media Area 内にも配置しない（確定）
+
+`AudioPlaceholder` / Video 表示面 **内部** へ Launcher を入れない。Media 固有 Widget の責務に Settings を混在させない。Launcher は Media content **外側** の App-level Presentation。
+
+### 15.4 レイアウト（概念 Widget Tree）
+
+常設 AppBar（44〜56px 縦消費）を **新設しない**（compact landscape で Media 領域を圧迫するため）。
+
+```text
+Scaffold
+├ body
+│   └ Stack
+│       ├ Main Content（Banner + Media 等）
+│       └ Top-right App Utility Layer
+│           └ Settings IconButton
+└ bottomNavigationBar
+    └ Playback Controls（Media 状態に応じて表示 / 非表示）
+```
+
+実装 Phase では client `901e4e0` 時点の `MediaScreen` 構造を確認し、**同一責務分離** を維持する最小構成を用いる。
+
+**App Utility Layer の制約:** Media content を **大きく覆う常設 Overlay** に **しない**。Launcher の視覚領域は **必要最小限**（§15.8）。
+
+### 15.5 Windows — 全 Media 状態でアクセス可能
+
+SafeArea 内 **右上** に固定した Settings `IconButton`。
+
+| Media 状態 | Launcher |
+|------------|----------|
+| Unselected / Loading / Ready / Playing / Paused / Stopped / Blocking Error / Non-blocking Error | **常に利用可能** |
+
+| Bottom Panel | Launcher |
+|--------------|----------|
+| expanded / collapsed / 非表示 | **常に利用可能** |
+
+Unselected でも Settings 利用可能（Media 選択を Settings 前提に **しない**）。Blocking Error 中も Error UI **内部** へ Launcher を埋め込まず App Utility Layer を維持。
+
+### 15.6 compact landscape
+
+844×390 / 800×400 / 667×375 等でも Launcher は利用可能。compact だから Bottom Panel へ移動 **しない**。Playback Panel の 1 段 / 2 段 fallback（720px 境界）と **独立**。
+
+### 15.7 Mobile（Android / iOS）
+
+Settings は **App-level** という責務は Windows と共通。**右上 Settings Launcher** を基本方針。SafeArea / system inset を必須尊重。Windows Bottom Panel 存在を Mobile Launcher 設計へ **持ち込まない**。
+
+### 15.8 視覚条件・Media との重なり
+
+| 条件 | 内容 |
+|------|------|
+| SafeArea | 尊重 |
+| Spacing | 画面右上の **既存 Spacing Token 内** に配置 |
+| Hit target | **44 logical px 以上** |
+| 視覚領域 | Launcher は **必要最小限**。Video の **広い範囲を覆わない** |
+| Utility surface | Video 上でも視認できるよう、既存 Theme の **surface token** による **小さい utility surface**（IconButton + 必要最小限 background）を **許可** |
+| Media 中央配置 | client `68ff1b4` の Audio / Video **Bottom Panel 除く中央配置** を Launcher 追加理由に **変更しない**（§15.8.1） |
+| 競合回避 | Playback Controls、Non-blocking Error Banner 等の **重要 UI と競合しない** |
+| compact landscape | Media 表示領域を **著しく奪わない** |
+| 禁止 | 動画を **完全に隠す** 配置、**44〜56px 全幅 AppBar**、**大きな常設背景 Panel**、Media 全体を **大きく下へ押し下げる** 設計、Media 中央配置基準の **不必要な変更**、独自色 |
+
+#### 15.8.1 Media 中央配置との関係
+
+Launcher は **App Utility** であり、Media レイアウトそのものを再設計する理由に **しない**。実装時に実画面で重なりが問題になる場合は、Launcher utility inset / minimal padding 等で **局所調整** する。
+
+### 15.9 Tooltip / Semantics
+
+| 項目 | 内容 |
+|------|------|
+| Tooltip（ja / en） | 設定 / Settings（ARB `settings` — §8.1） |
+| Semantics label | Tooltip と同じ |
+| **現在（client 実装）** | Visual Tooltip **Always enabled**。Common Settings ON/OFF 制御・`showTooltips` runtime 参照は **未実装** |
+| **将来（`showTooltips` 導入後）** | ON → Visual Tooltip 表示 / OFF → Visual Tooltip 非表示。**Semantics label は ON/OFF に関係なく維持**（§6.3）。default **`true`** |
+| Launcher | 将来 `showTooltips` の制御対象。**Tooltip ON/OFF 自体は未実装** |
+
+### 15.10 Navigation contract（確定）
+
+| 概念 | 内容 |
+|------|------|
+| Activate | **`openSettings()`** 相当（実装名は client 構造に合わせる） |
+| 開く先 | **Common Settings Shell** のみ（General + Audio Section） |
+| Shell 構造 | Settings → General（Tooltip）/ Audio → Audio Output |
+
+**禁止:** Gear → `AudioOutputSettingsSection` 直結。
+
+### 15.11 Navigation contract（API — 確定）
+
+Settings 画面の開き方は **本設計で確定** する（§15.10 と同一）。
 
 | 概念 | 内容 |
 |------|------|
 | Entry API | **`openSettings(BuildContext context)`** または Composition Root 経由の **`SettingsNavigator.open()`** |
 | Route | **`SettingsRoute`**（名前付き Route。実装 Phase で `go_router` 等の有無は client 方針に従う） |
 | 内容 | `SettingsScreen` — General + Audio Section |
-| Launcher 未確定の開発 | Modal / 暫定 AppBar action / debug entry で Section 開発を **妨げない** |
-
-Launcher の物理配置だけ Pending。Navigation contract は Phase C / Settings 実装の prerequisite として利用可能。
+| Launcher 未実装 Phase | Modal / 暫定 entry / debug entry で Section 開発を **妨げない** |
 
 ## 16. Audio Output Phase C との接続境界
 
@@ -666,8 +791,11 @@ Audio Output Section の Widget test は [audio-output-settings.md](audio-output
 
 | 項目 | 状態 |
 |------|------|
-| Common Settings Core | **Core Design Complete** |
-| Tooltip ON / OFF | **Requirement / Design Complete** / **Not Implemented** |
+| Common Settings Core | **Core Design Complete** / **Not Implemented** |
+| Tooltip ON / OFF | **Design Complete** / **Not Implemented** |
+| **現在の Visual Tooltip** | **Always enabled**（client 実装。Common Settings 制御なし） |
+| **将来 `showTooltips` default** | **`true`**（導入後の初回 / 未保存時） |
 | Concrete Persistence | **Pending** implementation-time technology selection |
-| Settings Launcher physical placement | **Launcher placement design pending** |
+| Settings Launcher physical placement | **Design Complete**（§15） |
+| Settings Launcher implementation | **Not Implemented** |
 | Audio Output Phase C | **Design Complete**（[audio-output-settings.md](audio-output-settings.md)）/ **未実装** |
