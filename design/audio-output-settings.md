@@ -205,7 +205,7 @@ NainaiApp
         └─ AudioOutputSettingsSection   ← Phase C
 ```
 
-Phase C 最小スコープとして **Audio Output Section のみ** でもよい。Settings Shell / General Section / Tooltip は [settings.md](settings.md) が正本。Phase C 実装時は Shell 未完了でも Section 単体開発可（§14）。
+Phase C 最小スコープとして **Audio Output Section のみ** でもよい。Settings Shell / Display Section / Tooltip は [settings.md](settings.md) が正本。Phase C 実装時は Shell 未完了でも Section 単体開発可（§14）。
 
 ### 6.4 dispose ownership（Phase C 以降 — 設計確定）
 
@@ -540,5 +540,5 @@ Service Phase B テスト（device mapping / `selectDevice` 規則等）と **�
 | 項目 | 備考 |
 |------|------|
 | `SettingsController` との compose タイミング | 独立 `AudioOutputController` を Phase C で先行実装可。[settings.md](settings.md) §4.5 |
-| Settings 全体 Navigation 構造 | Shell / General / Tooltip / Launcher は [settings.md](settings.md)。Audio Output Section 以外の Phase C 外項目も同書 |
+| Settings 全体 Navigation 構造 | Shell / Display / Tooltip / Launcher は [settings.md](settings.md)。Audio Output Section 以外の Phase C 外項目も同書 |
 | Section 内 Banner 自動消失 | [phase2-ui.md](phase2-ui.md) と同様、勝手に秒数確定しない |

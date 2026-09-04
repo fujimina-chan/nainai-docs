@@ -260,7 +260,7 @@ Settings 閉鎖 / rotation / `Activity` pause 中の二重 picker を **作ら�
 
 ## 7. Android Settings UI（確定）
 
-Settings Shell（General + Audio Section）は [settings.md](settings.md) と共有。Section **中身** のみ Android 固有。
+Settings Shell（Display + Audio Section）は [settings.md](settings.md) と共有。Section **中身** のみ Android 固有。
 
 ### 7.1 レイアウト概念（supported — API >= 30）
 

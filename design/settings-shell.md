@@ -30,9 +30,10 @@ Common Settings の **Launcher から Shell 内 Section まで** の Presentatio
 |------|------|--------------|
 | App-level Settings Launcher | [settings.md](settings.md) §15 | **維持**（§3） |
 | Common Settings Core | [settings.md](settings.md) §4 | **参照** — `SettingsController` / `AppSettings` |
-| `showTooltips` | [settings.md](settings.md) §6 | **Shell General Section**（§9） |
+| `showTooltips` | [settings.md](settings.md) §6 | **Shell Display Section**（§9） |
 | Common Settings Persistence | [settings-persistence.md](settings-persistence.md) | **load / save / failure UI**（§10–§12） |
 | `AudioOutputSettingsSection` | [audio-output-settings.md](audio-output-settings.md) | **Shell Audio Section**（§14） |
+| Category 構造 | [settings.md](settings.md) §2 | **Display / Audio（MVP）**。空 Section 禁止（§5） |
 | Phase G user command | [audio-output-persistence.md](audio-output-persistence.md) §5 | **Audio command 契約**（§14） |
 
 ## 2. 設計原則
@@ -116,9 +117,11 @@ openSettings()
 SettingsShell（adaptive）
     ├─ Desktop: End Side Sheet
     └─ Mobile: Full-screen Settings Route
-            ├─ GeneralSettingsSection
+            ├─ DisplaySettingsSection
             └─ AudioOutputSettingsSection
 ```
+
+**空カテゴリ（Playback / General）は載せない**（[settings.md](settings.md) §2.4）。
 
 ### 4.3 Desktop Side Sheet — 寸法（確定）
 
@@ -175,22 +178,28 @@ close 時 **`SettingsController` / `AudioOutputController` を dispose しない
 
 ## 5. Settings Sections（MVP — 確定）
 
+カテゴリ正本は [settings.md](settings.md) §2。本書は Shell 内 Presentation 構成を記載する。
+
 ```text
 設定
 
-一般
+表示
   └─ ツールチップを表示（showTooltips）
 
 オーディオ
   └─ 音声出力（AudioOutputSettingsSection）
 ```
 
-| Section | 内容 |
-|---------|------|
-| **General** | `showTooltips` のみ |
-| **Audio** | `AudioOutputSettingsSection` |
+| Section | 内容 | 状態 |
+|---------|------|------|
+| **Display（表示）** | `showTooltips` のみ | **Current MVP** |
+| **Audio（オーディオ）** | `AudioOutputSettingsSection` | **Current MVP** |
+| **Playback（再生）** | 予約 | Future — **空のため非表示** |
+| **General（一般）** | 予約（catch-all 禁止） | Future — **空のため非表示** |
 
-fake 項目 **禁止**。MVP で General / Audio のみのため **別 navigation rail / sidebar hierarchy は導入しない**（§16）。
+fake 項目 **禁止**。空 Section **禁止**。MVP で Display / Audio のみのため **別 navigation rail / sidebar hierarchy は導入しない**（§16）。
+
+カテゴリ変更は Presentation grouping のみ。Shell 形式（§4）・Audio Output 契約（§14）・Tooltip 契約（§8–§9）は **変更しない**。
 
 ## 6. Presentation 依存契約（Phase H 境界）
 
@@ -307,7 +316,7 @@ NainaiTooltip(
 
 Phase 2 既存 controls は **`NainaiTooltip` へ段階移行**。
 
-## 9. General Section — 初期化 UI（確定 — 1 方式）
+## 9. Display Section — 初期化 UI（確定 — 1 方式）
 
 ### 9.1 `SettingsController.initialize()` 完了前 — Loading placeholder
 
@@ -518,7 +527,7 @@ Readiness / enumeration gate UI は Section + Controller state。具体 lifecycl
 |------|--------|
 | **`AudioOutputNotificationHost`** | **App-level** — Settings Shell **外** |
 | Shell open/close | notification host **再生成しない** |
-| Shell 内 | 設定文脈 error のみ（§11 General save、§14.6 Audio Persistence 等） |
+| Shell 内 | 設定文脈 error のみ（§11 Display save、§14.6 Audio Persistence 等） |
 | fallback success/failure notification | Shell 内部へ **戻さない** |
 
 [audio-output-hot-unplug.md](audio-output-hot-unplug.md)。
@@ -528,8 +537,11 @@ Readiness / enumeration gate UI は Section + Controller state。具体 lifecycl
 | 項目 | 内容 |
 |------|------|
 | 構造 | Desktop Side Sheet / Mobile Route 内部は **単純 vertical layout** |
-| 構成 | Settings title + General section + Audio section |
-| 禁止 | General / Audio のみのため **別 navigation rail / 過剰 sidebar** |
+| 構成 | Settings title + Display section + Audio section |
+| 空 Section | Playback / General 等 **項目 0 件は表示しない** |
+| 禁止 | Display / Audio のみのため **別 navigation rail / 過剰 sidebar** |
+| Shell 維持 | カテゴリ変更を理由に Navigation Drawer へ **変更しない** |
+| Launcher 維持 | Phase 2 中は `Icons.settings_rounded`。ハンバーガー昇格は Future App Navigation（[settings.md](settings.md) §2.6） |
 
 ## 17. Accessibility（Shell 全体）
 

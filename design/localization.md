@@ -74,7 +74,7 @@ Service 層へ `BuildContext` は注入しない。`MediaTypeGroupLabelProvider`
 
 ## 5. Settings 向けキー
 
-共通 Settings（General / Tooltip 等）のキー設計は [settings.md](settings.md) §8。音声出力 Settings 向けキーは [audio-output-settings.md](audio-output-settings.md) §16 および [audio-output.md](audio-output.md) §11。いずれも **未実装**。Settings UI 実装 Phase で ARB へ追加する。
+共通 Settings（Display / Tooltip / Audio 等）のキー設計は [settings.md](settings.md) §8。音声出力 Settings 向けキーは [audio-output-settings.md](audio-output-settings.md) §16 および [audio-output.md](audio-output.md) §11。いずれも **未実装**。Settings UI 実装 Phase で ARB へ追加する。
 
 ## 6. 検証（client）
 

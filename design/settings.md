@@ -4,6 +4,7 @@ nainai アプリ全体の Settings Presentation Entry Point、共通 preference 
 
 関連:
 
+- [Settings Shell / Launcher Presentation](settings-shell.md)
 - [Windows 音声出力 Settings UI（Phase C）](audio-output-settings.md)
 - [音声出力デバイス選択](audio-output.md)
 - [UI Localization](localization.md)
@@ -16,40 +17,157 @@ nainai アプリ全体の Settings Presentation Entry Point、共通 preference 
 
 | 項目 | 内容 |
 |------|------|
-| スコープ | Settings Shell / General Section / `AppSettings` / `SettingsController` / Persistence 抽象 / Tooltip Policy |
-| 第一設定項目 | `showTooltips`（Tooltip 表示 ON / OFF） |
-| Audio Output との関係 | **置き換えではない**。Audio Output Phase C は [audio-output-settings.md](audio-output-settings.md) が正本 |
+| スコープ | Settings Shell / Category 構造 / Display Section / `AppSettings` / `SettingsController` / Persistence 抽象 / Tooltip Policy |
+| 第一設定項目 | `showTooltips`（Tooltip 表示 ON / OFF）— **Display** カテゴリ所属 |
+| Audio Output との関係 | **置き換えではない**。Audio Output Phase C は [audio-output-settings.md](audio-output-settings.md) が正本。所属カテゴリは **Audio** |
 | 状態 | **Core Implemented**（client `4109a13` — Model / Controller / interface）/ **Concrete Persistence Design Complete** / **Concrete Implementation Not Implemented** |
 
-**Core Design Complete の範囲:** Settings 責務 / 画面構造 / Section 構造 / Model / Controller / Persistence Interface / **async consistency（revision / serialized save）** / Tooltip 仕様 / Accessibility / Localization キー設計 / Application Composition / ownership / テスト方針 / Audio Output 境界 / Launcher Navigation contract。
+**Core Design Complete の範囲:** Settings 責務 / 画面構造 / **Category 構造** / Section 構造 / Model / Controller / Persistence Interface / **async consistency（revision / serialized save）** / Tooltip 仕様 / Accessibility / Localization キー設計 / Application Composition / ownership / テスト方針 / Audio Output 境界 / Launcher Navigation contract。
 
 **Concrete Persistence:** **[Design Complete — `shared_preferences`](settings-persistence.md)**。**Implementation Not Implemented**。永続化 Interface と async consistency 仕様（§4.4 / §12）は本書で確定済み。
 
 **Settings Launcher physical placement:** **Design Complete**（§15）。**Settings Launcher implementation:** **Not Implemented**。
 
-Navigation contract / Settings Shell / Tooltip Policy 等の Core Design は本書が正本。Launcher Presentation 詳細は [phase2-ui.md](phase2-ui.md) §14。
+Navigation contract / Settings Shell / Tooltip Policy 等の Core Design は本書が正本。Launcher Presentation 詳細は [phase2-ui.md](phase2-ui.md) §14。Shell Presentation 詳細は [settings-shell.md](settings-shell.md)。
 
-## 2. Settings 全体構造
+## 2. Settings 全体構造（Category Architecture — 確定）
 
-Settings は **機能ごとに Settings 画面を乱立させない** アプリ共通 Entry Point とする。
+Settings は **機能ごとに Settings 画面を乱立させない** アプリ共通 Entry Point とする。項目は **用途別カテゴリ** に属する。
+
+### 2.0 Current vs Future（必須分離）
+
+| 区分 | カテゴリ | UI 表示 |
+|------|----------|---------|
+| **Current MVP** | **Display** / **Audio** | 項目がある Section のみ表示 |
+| **Future（予約）** | **Playback** / **General** | 項目 0 件の間は **空 Section として表示しない** |
+| **Future（App Navigation）** | Library / Playlist / Analysis / App Navigation Menu | Settings カテゴリとは **別概念**（§2.6） |
+
+**禁止:** Future カテゴリ・App Navigation・Library 等を **現行実装済み** と誤記すること。
+
+### 2.1 正式 Category 構造
 
 ```text
-Settings（Shell）
-├ General
-│   └ Show Tooltips          ← 本設計（第一共通設定）
+Settings
 │
-└ Audio
-    └ Audio Output           ← Phase C（audio-output-settings.md）
+├ Display（表示）                 ← Current MVP
+│   └ showTooltips（ツールチップを表示）
+│
+├ Audio（オーディオ）             ← Current MVP
+│   └ Audio Output（音声出力）
+│
+├ Playback（再生）                ← Future / Reserved
+│   └ （将来設定）
+│
+└ General（一般）                 ← Future / Reserved
+    └ （他カテゴリに属さないアプリ全体設定のみ）
 ```
 
-将来追加候補（**現時点では未仕様・勝手に確定しない**）:
+| 日本語正式名 | 英語候補 | 状態 |
+|--------------|----------|------|
+| **表示** | Display | **Current MVP** |
+| **オーディオ** | Audio | **Current MVP** |
+| **再生** | Playback | Future / Reserved |
+| **一般** | General | Future / Reserved |
 
-- Appearance
-- Language（Locale 切替 — [localization.md](localization.md) と連携予定）
-- Playback
-- Export
+Localization キーは §8.1。既存 ARB 設計との整合: `audio` / `general` は維持。Display / Playback 用キーを追加（§8.1）。
 
-### 2.1 責務分離（Common vs Feature-specific）
+### 2.2 `showTooltips` の所属（確定）
+
+| 項目 | 内容 |
+|------|------|
+| 正式所属 | **Display（表示）** |
+| 表示ラベル | ツールチップを表示 |
+| 理由 | `showTooltips` はアプリ挙動ではなく **UI 表示方針** に属する |
+
+**Historical:** 初期設計では `General / showTooltips` としていた（client Core `4109a13` 時点の概念整理）。**正式仕様としては残さない。** Presentation grouping の移動のみであり、`SettingsController` / key `settings.showTooltips` / default `true` / `TooltipPolicy` / `NainaiTooltip` 契約は **変更しない**（§6）。
+
+### 2.3 Audio カテゴリ名（確定 — 「出力」不採用）
+
+カテゴリ名は原則 **オーディオ / Audio** を採用する。
+
+| 採用 | 不採用 | 理由 |
+|------|--------|------|
+| **オーディオ** | 「出力」 | 将来の音量 / EQ / Compressor / Audio processing 等を同カテゴリへ追加しうる。「出力」は動画出力・ファイル書き出し・Export 等と意味が衝突する |
+
+Audio Output（音声出力）は Audio カテゴリ配下の **1 項目**。カテゴリ変更は **Presentation grouping のみ**。Windows `deviceList` / Android `systemRoutePickerCommand` / iOS `embeddedSystemRoutePicker`、`AudioOutputController` / `AudioOutputPreferenceCoordinator` / `AudioOutputNotificationHost` 等の責務境界は **変更しない**。
+
+### 2.4 Playback / General（Future — 空 Section 禁止）
+
+| カテゴリ | 方針 |
+|----------|------|
+| **Playback** | 現時点で Settings 項目がなくてよい。将来候補: 再生開始動作 / Repeat 関連設定 / 自動再生 / 再生動作設定。**現在の Repeat OFF/ONE 等の即時再生 control を勝手に Settings へ移さない** |
+| **General** | 残すが **catch-all 禁止**。他カテゴリへ明確に属さない **アプリ全体設定のみ** 配置 |
+
+**空 Section 禁止（確定）:** 設定項目が **0 件** のカテゴリは UI へ **表示しない**。
+
+Current MVP UI:
+
+```text
+設定
+
+表示
+  └ ツールチップを表示
+
+オーディオ
+  └ 音声出力
+```
+
+次の client follow-up では上記 **Display + Audio のみ** を実 UI へ反映する。Playback / General の空 Section は **出さない**。
+
+### 2.5 Settings UI 階層（Current）
+
+現段階では **1 画面縦並び** を維持する:
+
+```text
+Settings Screen
+  ↓
+各カテゴリ Section（項目があるもののみ）
+```
+
+設定数が増えた場合は Category navigation / sidebar / tab / nested page 等へ発展可能とする。**本 Phase では Navigation UI（rail / sidebar / tab）を導入しない。**
+
+Shell 形式（Desktop end side sheet / Mobile full-screen Route）は [settings-shell.md](settings-shell.md) が正本。カテゴリ変更を理由に Shell を Navigation Drawer へ **変更しない**。
+
+### 2.6 将来 App Navigation（Future — Settings カテゴリとは別）
+
+**重要:** Settings 内カテゴリ分類と **App 全体 Navigation** は別概念。
+
+| 区分 | 内容 | 状態 |
+|------|------|------|
+| **Current（Phase 2）** | Settings Launcher = `Icons.settings_rounded`（歯車） | **維持** — カテゴリ分類だけを理由にハンバーガーへ **変更しない** |
+| **Future Navigation Phase** | トップレベル画面実装時に Settings Launcher を **App Navigation Menu** へ昇格 | **未実装 / 未詳細設計** |
+
+将来 App-level Navigation 候補:
+
+```text
+☰
+├ 再生
+├ 曲一覧（Library）
+├ 再生リスト（Playlist）
+├ 解析（Analysis）
+└ 設定（Settings）
+```
+
+| 将来画面 | 役割メモ | 状態 |
+|----------|----------|------|
+| **Library（曲一覧）** | 登録曲 / スキャン Media / Media Library 一覧 | Future |
+| **Playlist（再生リスト）** | 曲一覧とは別概念。将来 **Playlist** と **Current Queue** を明確分離。現時点では同一と確定しない | Future |
+| **Analysis（解析）** | 歌詞 / 字幕検出、BPM / Key / Beat / Time Signature、将来 Chord / Section 等。詳細 AI 設計は **本書では行わない** | Future |
+| **Settings** | 本書の Settings Shell | Current Design |
+
+### 2.7 Playback continuity（Future Navigation 前提 — 正本記録）
+
+画面切替（再生 / 曲一覧 / 再生リスト / 設定 / 解析）を行っても **Playback Session は継続** する。
+
+| 原則 | 内容 |
+|------|------|
+| **Ownership** | `Player` / `MediaController` / `PlaybackService` / `AudioOutputController` 等の再生系 object は **各 Page ownership 禁止**。**App lifetime / App Shell ownership** |
+| **Page switch** | App-level navigation は **Current Page のみ** 切替。**禁止:** Player 再生成 / MediaController 再生成 / PlaybackService dispose / 音声停止 |
+| **Playback Controls** | トップレベルページ切替後もアクセス可能。Desktop: 現行 Bottom Panel / Floating controls 相当を Navigation Page **外側**で維持。Mobile: 再生中常時アクセスできる compact control 等へ将来発展可 |
+
+詳細 Composition / dispose は [media-playback.md](media-playback.md) / [audio-output-settings.md](audio-output-settings.md) / [audio-output-composition.md](audio-output-composition.md) と整合。
+
+### 2.8 責務分離（Common vs Feature-specific）
 
 | 領域 | 担当 | 正本 |
 |------|------|------|
@@ -82,9 +200,10 @@ Settings（Shell）
 
 ### 3.3 拡張方針
 
-- 将来の共通設定（Appearance / Language 等）は `AppSettings` へ field 追加で拡張可能
+- 将来の共通設定（Language 等。Locale 切替は [localization.md](localization.md) と連携予定）は、所属カテゴリ（Display / General 等）を決めたうえで `AppSettings` へ field 追加で拡張可能
 - `copyWith` / equality を採用し、部分更新とテスト容易性を確保する
 - **機能固有 Preference**（例: `AudioOutputPreference`）は **別 Domain モデル** のまま維持。`AppSettings` への統合は行わない
+- **General catch-all 禁止** — 他カテゴリへ明確に属するものを General へ入れない（§2.4）
 
 ### 3.4 責務境界（AppSettings vs AudioOutputPreference）
 
@@ -322,12 +441,12 @@ client 現状:  IconButton(tooltip: 'しまう', ...)   // Visual Tooltip 常時
 
 ## 7. Settings UI
 
-### 7.1 General Section
+### 7.1 Display Section（Current MVP）
 
 | Locale | Section title |
 |--------|---------------|
-| ja | 一般 |
-| en | General |
+| ja | 表示 |
+| en | Display |
 
 Tooltip 行:
 
@@ -340,7 +459,7 @@ Tooltip 行:
 構造概念:
 
 ```text
-一般
+表示
 
 ツールチップを表示                 [ ON ]
 ボタンやアイコンにマウスを
@@ -349,7 +468,9 @@ Tooltip 行:
 
 Visual Token は [design-system.md](design-system.md) 準拠。Settings Shell 共通 Background / Surface / Accent を Audio Section と共有する。
 
-### 7.2 Audio Section
+**Historical note:** 初期設計では本 Section を「一般 / General」としていた。正式所属は **Display**（§2.2）。
+
+### 7.2 Audio Section（Current MVP）
 
 | Locale | Section title |
 |--------|---------------|
@@ -360,18 +481,23 @@ Section 内コンテンツは [audio-output-settings.md](audio-output-settings.m
 
 **Shell と platform-specific contents の分離:**
 
-- **Settings Shell**（General / Audio Section 見出し、Navigation、共通 Layout）— 本書
+- **Settings Shell**（Display / Audio Section 見出し、共通 Layout）— 本書 / [settings-shell.md](settings-shell.md)
 - **Audio Output platform-specific contents** — Phase C（Windows device list）、Phase E / F（Mobile route picker）
 
-Windows / Android / iOS で **Settings 内容構造（General + Audio）は共有** する。Audio Output Section の **中身** のみ platform capability に応じて異なる。
+Windows / Android / iOS で **Settings 内容構造（Display + Audio）は共有** する。Audio Output Section の **中身** のみ platform capability に応じて異なる。
 
-### 7.3 Desktop / Mobile Presentation
+### 7.3 Playback / General Sections（Future）
+
+項目が追加されるまで **UI に表示しない**（§2.4）。Localization キーのみ予約（§8.1）。
+
+### 7.4 Desktop / Mobile Presentation
 
 - **Settings 内容（Section / 項目）は共有**
-- **Shell の Presentation 形態** は adaptive とする（実装 Phase で Flutter adaptive pattern を採用）
-  - Mobile: フルスクリーン Route が第一候補
-  - Desktop（Windows）: フルページ Route または Dialog / 固定幅 Panel — Launcher 配置確定後に visual を調整可
+- **Shell の Presentation 形態** は Adaptive Settings Shell（[settings-shell.md](settings-shell.md)）:
+  - Desktop（≥800px）: End-anchored Side Sheet — `min(480, viewportWidth × 0.40)`
+  - Mobile（<800px）: Full-screen Settings Route
 - Tooltip Switch UI 自体は **Windows / Mobile 共通**
+- カテゴリ変更を理由に Shell を Navigation Drawer へ **変更しない**
 
 ## 8. Localization
 
@@ -379,15 +505,19 @@ Windows / Android / iOS で **Settings 内容構造（General + Audio）は共�
 
 ### 8.1 共通 Settings キー（camelCase — 本設計で確定）
 
-| キー | ja | en |
-|------|----|----|
-| `settings` | 設定 | Settings |
-| `general` | 一般 | General |
-| `showTooltips` | ツールチップを表示 | Show tooltips |
-| `showTooltipsDescription` | ボタンやアイコンにマウスを合わせたときに説明を表示します | Show descriptions when hovering over buttons and icons |
-| `audio` | オーディオ | Audio |
+| キー | ja | en | 用途 |
+|------|----|----|------|
+| `settings` | 設定 | Settings | Shell / Launcher |
+| `display` | 表示 | Display | Display Section title（Current MVP） |
+| `showTooltips` | ツールチップを表示 | Show tooltips | Display 項目 |
+| `showTooltipsDescription` | ボタンやアイコンにマウスを合わせたときに説明を表示します | Show descriptions when hovering over buttons and icons | Display 項目説明 |
+| `audio` | オーディオ | Audio | Audio Section title（Current MVP） |
+| `playback` | 再生 | Playback | Playback Section title（Future — 項目追加時） |
+| `general` | 一般 | General | General Section title（Future — 項目追加時） |
 
 Audio Output 向けキー（`audioOutput` 等）は [audio-output-settings.md](audio-output-settings.md) §16 が正本。実装 Phase で ARB 統合・重複排除する。
+
+**Historical:** 初期設計では `showTooltips` を `general` Section 配下としていた。正式所属は Display。キー `general` は Future General カテゴリ用に **維持**（削除しない）。
 
 Settings 保存失敗等の Non-blocking メッセージキー（例: `settingsSaveFailed`）は実装 Phase で追加可。本設計では必須キーとして確定しない。
 
@@ -397,7 +527,7 @@ Settings 保存失敗等の Non-blocking メッセージキー（例: `settingsS
 
 ## 9. Accessibility
 
-### 9.1 General Section — Tooltip Switch
+### 9.1 Display Section — Tooltip Switch
 
 Switch は次を認識可能にする:
 
@@ -452,7 +582,7 @@ Switch は次を認識可能にする:
 
 遅れて完了した load 結果が、load 開始後に行われたユーザー mutation を **上書きしてはならない**。
 
-**推奨（第一候補）:** initial load 完了前は Settings 画面での mutation を開始させない（`isLoading == true` 中は General Section Switch を disabled 等）。App 全体の Blocking 画面は **不要**。Tooltip は default `true` で安全に開始。
+**推奨（第一候補）:** initial load 完了前は Settings 画面での mutation を開始させない（`isLoading == true` 中は Display Section Switch を disabled 等）。App 全体の Blocking 画面は **不要**。Tooltip は default `true` で安全に開始。
 
 **代替（revision guard）:** load 開始時の revision を記録し、load 完了時に **その revision 以降にユーザー mutation が存在する** 場合、load 結果で `settings` を上書きしない。`lastPersistedSettings` のみ load 結果で更新する等、実装 Phase でいずれかを採用。
 
@@ -542,9 +672,11 @@ NainaiApp                          ← Composition Root
 ├── FileSelectorMediaSelectionService
 ├── MediaScreen
 └── SettingsScreen（または Settings Route）
-      ├─ GeneralSettingsSection    ← showTooltips
-      └─ AudioOutputSettingsSection ← Phase C
+      ├─ DisplaySettingsSection    ← showTooltips（Current MVP）
+      └─ AudioOutputSettingsSection ← Phase C（Current MVP）
 ```
+
+**空カテゴリ（Playback / General）は Section として載せない**（§2.4）。
 
 **`build()` ごとに `SettingsController` / `SettingsRepository` を生成しない。** Application lifetime で 1 組。
 
@@ -555,7 +687,7 @@ Audio Output Phase C は共通 Shell 未実装でも Section 単体を Modal / �
 推奨実装順（docs 上の推奨。client レーン判断は別）:
 
 1. `AppSettings` + `SettingsRepository` interface + `SettingsController` + Tooltip Policy
-2. General Section（showTooltips）+ Settings Shell 最小構成
+2. Display Section（showTooltips）+ Settings Shell 最小構成
 3. Audio Output Section を Shell へ統合（Phase C）
 4. Settings Launcher 実装（Presentation — §15 Design Complete / Not Implemented）
 
@@ -608,11 +740,13 @@ Settings Launcher は **App-level Top-right Utility Button** として配置す�
 | 所属 | **App-level Presentation**。Playback Controls / Bottom Panel / Audio Output UI **ではない** |
 
 ```text
-Gear → openSettings() → Common Settings Shell（General + Audio）
+Gear → openSettings() → Common Settings Shell（Display + Audio）
                               └─ Audio → AudioOutputSettingsSection
 ```
 
 **禁止:** Gear → `AudioOutputSettingsSection` 直結。
+
+**維持（Phase 2）:** Launcher は **`Icons.settings_rounded`**。カテゴリ再編や将来ハンバーガー導入予定を理由に **現 Phase で変更しない**（§2.6）。
 
 ### 15.2 Bottom Panel 内に配置しない（確定）
 
@@ -706,8 +840,8 @@ Launcher は **App Utility** であり、Media レイアウトそのものを再
 | 概念 | 内容 |
 |------|------|
 | Activate | **`openSettings()`** 相当（実装名は client 構造に合わせる） |
-| 開く先 | **Common Settings Shell** のみ（General + Audio Section） |
-| Shell 構造 | Settings → General（Tooltip）/ Audio → Audio Output |
+| 開く先 | **Common Settings Shell** のみ（Display + Audio Section — Current MVP） |
+| Shell 構造 | Settings → Display（Tooltip）/ Audio → Audio Output |
 
 **禁止:** Gear → `AudioOutputSettingsSection` 直結。
 
@@ -719,7 +853,7 @@ Settings 画面の開き方は **本設計で確定** する（§15.10 と同一
 |------|------|
 | Entry API | **`openSettings(BuildContext context)`** または Composition Root 経由の **`SettingsNavigator.open()`** |
 | Route | **`SettingsRoute`**（名前付き Route。実装 Phase で `go_router` 等の有無は client 方針に従う） |
-| 内容 | `SettingsScreen` — General + Audio Section |
+| 内容 | `SettingsScreen` — Display + Audio Section（空カテゴリ非表示） |
 | Launcher 未実装 Phase | Modal / 暫定 entry / debug entry で Section 開発を **妨げない** |
 
 ## 16. Audio Output Phase C との接続境界
@@ -729,7 +863,7 @@ Settings 画面の開き方は **本設計で確定** する（§15.10 と同一
 | Settings Shell / Section 見出し | `AudioOutputSettingsSection` Widget |
 | `SettingsController` / `AppSettings` | `AudioOutputController` / `AudioOutputState` |
 | Tooltip Policy | device enumeration / selection |
-| General Section | Windows device list UI |
+| Display Section | Windows device list UI |
 | Settings Persistence（共通） | Phase G `AudioOutputPreference` Persistence（別） |
 | Settings 内 Non-blocking error（共通 save/load） | Audio Output 操作 Non-blocking error |
 
@@ -774,7 +908,7 @@ Service / Repository integration の細部は実装 Phase で確定。最低限�
 | locale 変更時の label |
 | runtime 切替即時反映 |
 
-### 17.4 Settings Widget（General Section）
+### 17.4 Settings Widget（Display Section）
 
 | ケース |
 |--------|

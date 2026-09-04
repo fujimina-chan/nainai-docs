@@ -26,7 +26,7 @@
 | Concrete Technology | **Selected** — `shared_preferences`（§5） |
 | Concrete Repository implementation | **Not Implemented** |
 | Common Settings Core（Model / Controller / interface） | client `4109a13` **Implemented** |
-| Tooltip Policy / General Section UI wiring | **Not Implemented**（Visual Tooltip **Always enabled**） |
+| Tooltip Policy / Display Section UI wiring | **Not Implemented**（Visual Tooltip **Always enabled**） |
 
 ### 1.2 Android minSdk compatibility（確定 — 2026-08-30 実値確認）
 
@@ -474,7 +474,7 @@ Concrete 追加後:
 3. Composition Root — `SharedPreferencesAsync()` → Repository → `SettingsController`
 4. `initialize()` 起動時 invoke
 5. Repository unit tests（§16）
-6. General Section / TooltipPolicy wiring（別 Phase — 本書範囲外）
+6. Display Section / TooltipPolicy wiring（別 Phase — 本書範囲外）
 
 ## 18. 状態まとめ
 

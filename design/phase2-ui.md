@@ -296,7 +296,7 @@ Volume コントロールは Slider + 整数パーセント表示 + Volume ア�
 Phase 2 UI に次を先行表示しない。
 
 - Editor Navigation / Playlist / Library
-- Settings Screen 本体（General / Audio Section — **Settings Launcher 除く**。Launcher は §14）
+- Settings Screen 本体（Display / Audio Section — **Settings Launcher 除く**。Launcher は §14）
 - Timeline / Equalizer / Compressor 等
 
 ## 14. Settings Launcher（App-level — Design Complete）
@@ -371,7 +371,7 @@ client `68ff1b4` で確定した、Audio / Video を **Bottom Panel 除く領域
 
 ### 14.10 Navigation
 
-Activate → **`openSettings()`** → Common Settings Shell（General + Audio）。**Gear → `AudioOutputSettingsSection` 直結禁止**。
+Activate → **`openSettings()`** → Common Settings Shell（Display + Audio）。**Gear → `AudioOutputSettingsSection` 直結禁止**。
 
 ## 15. 未確定事項
 
