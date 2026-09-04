@@ -20,13 +20,15 @@ nainai アプリ全体の Settings Presentation Entry Point、共通 preference 
 | スコープ | Settings Shell / Category 構造 / Display Section / `AppSettings` / `SettingsController` / Persistence 抽象 / Tooltip Policy |
 | 第一設定項目 | `showTooltips`（Tooltip 表示 ON / OFF）— **Display** カテゴリ所属 |
 | Audio Output との関係 | **置き換えではない**。Audio Output Phase C は [audio-output-settings.md](audio-output-settings.md) が正本。所属カテゴリは **Audio** |
-| 状態 | **Core Implemented**（client `4109a13` — Model / Controller / interface）/ **Concrete Persistence Design Complete** / **Concrete Implementation Not Implemented** |
+| 状態 | **Implemented**（client `dccf48f` — Phase I-3。Core `4109a13` + Persistence + Shell + Tooltip Policy + Audio Output wiring + Category Presentation） |
 
 **Core Design Complete の範囲:** Settings 責務 / 画面構造 / **Category 構造** / Section 構造 / Model / Controller / Persistence Interface / **async consistency（revision / serialized save）** / Tooltip 仕様 / Accessibility / Localization キー設計 / Application Composition / ownership / テスト方針 / Audio Output 境界 / Launcher Navigation contract。
 
-**Concrete Persistence:** **[Design Complete — `shared_preferences`](settings-persistence.md)**。**Implementation Not Implemented**。永続化 Interface と async consistency 仕様（§4.4 / §12）は本書で確定済み。
+**Concrete Persistence:** **[Implemented — `shared_preferences`](settings-persistence.md)**（`f8dc189`）。
 
-**Settings Launcher physical placement:** **Design Complete**（§15）。**Settings Launcher implementation:** **Not Implemented**。
+**Settings Launcher:** **Implemented**（`Icons.settings_rounded`）。物理配置正本は §15。
+
+**Phase I-3 Implementation Result 正本:** [settings-shell.md](settings-shell.md) §19（I-3B / I-3C / I-3D）。本書は契約正本。状態の詳細同期は同節。
 
 Navigation contract / Settings Shell / Tooltip Policy 等の Core Design は本書が正本。Launcher Presentation 詳細は [phase2-ui.md](phase2-ui.md) §14。Shell Presentation 詳細は [settings-shell.md](settings-shell.md)。
 
@@ -69,7 +71,7 @@ Settings
 | **再生** | Playback | Future / Reserved |
 | **一般** | General | Future / Reserved |
 
-Localization キーは §8.1。既存 ARB 設計との整合: `audio` / `general` は維持。Display / Playback 用キーを追加（§8.1）。
+Localization キーは §8.1。実装（I-3D）: `settingsDisplay` / `settingsAudio`。Future 予約: `settingsGeneral`（項目追加時。Playback 用キーは項目追加時に追加）。
 
 ### 2.2 `showTooltips` の所属（確定）
 
@@ -196,7 +198,7 @@ Shell 形式（Desktop end side sheet / Mobile full-screen Route）は [settings
 |------------|-----|------------|------|
 | `showTooltips` | `bool` | **`true`** | Visual Tooltip 表示 ON / OFF（**将来設計**。client 現状は §6 参照） |
 
-**`showTooltips` デフォルト `true`（将来設計）を正式確定する理由:** 初回利用時の UI discoverability（Icon 説明）を維持するため。client 現状では `AppSettings` / runtime 参照は **未実装** で、Visual Tooltip は **常時有効**（§6）。
+**`showTooltips` デフォルト `true` を正式確定する理由:** 初回利用時の UI discoverability（Icon 説明）を維持するため。default は §6 / `AppSettings.defaults()`。
 
 ### 3.3 拡張方針
 
@@ -339,7 +341,7 @@ abstract class SettingsRepository {
 | 項目 | 状態 |
 |------|------|
 | Technology selection | **Design Complete** — [settings-persistence.md](settings-persistence.md) |
-| Concrete implementation | **Not Implemented** |
+| Concrete implementation | **Implemented**（`f8dc189` — `SharedPreferencesSettingsRepository`） |
 | 候補比較 | 本書 §5.3 旧 Pending 記載は [settings-persistence.md](settings-persistence.md) §5 へ移管 |
 
 **不採用:** 独自 JSON file persistence（MVP 1 bool に対しコスト対効果不足 — [settings-persistence.md](settings-persistence.md) §5.2–§5.4）。
@@ -356,14 +358,14 @@ abstract class SettingsRepository {
 
 ## 6. Tooltip 表示 ON / OFF（正式仕様）
 
-### 6.0 現在の client 実装と将来設計の区別（必須）
+### 6.0 現在の client 実装と Historical の区別（必須）
 
 | 区分 | 内容 |
 |------|------|
-| **現在の client 実装（`4109a13`）** | `AppSettings` / `SettingsController` / `SettingsRepository` interface **Implemented**。Visual Tooltip は Presentation 上 **Always enabled**（`TooltipPolicy` 未配線）。Concrete `SettingsRepository` **Not Implemented** |
-| **将来設計**（Tooltip Policy 配線後） | `AppSettings.showTooltips`（default **`true`**）で Visual Tooltip ON/OFF。Semantics label は ON/OFF に関係なく **維持** |
+| **現在の client 実装（`dccf48f`）** | `AppSettings` / `SettingsController` / Concrete `SharedPreferencesSettingsRepository` / `TooltipPolicy` / `NainaiTooltip` **Implemented**。`showTooltips` で Visual Tooltip ON/OFF。Media Presentation は I-3C で Policy 連動済み（[settings-shell.md](settings-shell.md) §19.3） |
+| **Historical（`4109a13`〜I-3C 前）** | Core interface のみ。Visual Tooltip は Presentation 上 **Always enabled**（`TooltipPolicy` 未配線 / Media raw Tooltip）。Concrete Repository 未配線時期あり |
 
-**禁止:** 「現在 Tooltip が有効なのは `showTooltips == true` だから」と記述すること。
+**禁止:** 「現在 Tooltip が有効なのは常時有効実装だから」と記述すること（I-3C 以降は `showTooltips` 制御）。
 
 ### 6.1 設定名（将来設計 — 確定）
 
@@ -371,7 +373,7 @@ abstract class SettingsRepository {
 |------|-----|
 | Model field | `showTooltips` |
 | 型 | `bool` |
-| デフォルト | **`true`**（`showTooltips` **導入後** の初回 / 未保存時。client 現状は §6.0） |
+| デフォルト | **`true`**（初回 / 未保存時） |
 
 ### 6.2 挙動（将来設計 — 確定）
 
@@ -410,7 +412,7 @@ client 現状:  IconButton(tooltip: 'しまう', ...)   // Visual Tooltip 常時
 
 - nainai 自身が Presentation 上で提供する **補助 Visual Tooltip**
 
-対象例（将来 `TooltipPolicy` 移行対象。client 固定 Bottom Panel は `68ff1b4` で **実装済み** — Tooltip Policy 実装 Phase で適用）:
+対象例（I-3C で `NainaiTooltip` 移行済み — [settings-shell.md](settings-shell.md) §19.3）:
 
 - 「しまう」「戻す」（Bottom Panel 折りたたみ）
 - 「別のファイルを選択」
@@ -503,21 +505,20 @@ Windows / Android / iOS で **Settings 内容構造（Display + Audio）は共�
 
 [localization.md](localization.md) の gen-l10n / ARB 基盤を使用。**日本語直書き禁止。** 本設計時点では ARB 変更なし。
 
-### 8.1 共通 Settings キー（camelCase — 本設計で確定）
+### 8.1 共通 Settings キー（camelCase — 実装整合）
 
 | キー | ja | en | 用途 |
 |------|----|----|------|
 | `settings` | 設定 | Settings | Shell / Launcher |
-| `display` | 表示 | Display | Display Section title（Current MVP） |
+| `settingsDisplay` | 表示 | Display | Display Section title（Current MVP — I-3D） |
 | `showTooltips` | ツールチップを表示 | Show tooltips | Display 項目 |
 | `showTooltipsDescription` | ボタンやアイコンにマウスを合わせたときに説明を表示します | Show descriptions when hovering over buttons and icons | Display 項目説明 |
-| `audio` | オーディオ | Audio | Audio Section title（Current MVP） |
-| `playback` | 再生 | Playback | Playback Section title（Future — 項目追加時） |
-| `general` | 一般 | General | General Section title（Future — 項目追加時） |
+| `settingsAudio` | オーディオ | Audio | Audio Section title（Current MVP — I-3D） |
+| `settingsGeneral` | 一般 | General | General Section title（Future 予約 — UI 未使用） |
 
-Audio Output 向けキー（`audioOutput` 等）は [audio-output-settings.md](audio-output-settings.md) §16 が正本。実装 Phase で ARB 統合・重複排除する。
+Audio Output 向けキー（`audioOutput` 等）は [audio-output-settings.md](audio-output-settings.md) §16 が正本。I-3B で ARB 追加済み（実装結果は [settings-shell.md](settings-shell.md) §19.2）。
 
-**Historical:** 初期設計では `showTooltips` を `general` Section 配下としていた。正式所属は Display。キー `general` は Future General カテゴリ用に **維持**（削除しない）。
+**Historical:** 設計段階のキー案 `display` / `audio` / `general` / `playback`。実装（I-3D）は `settingsDisplay` / `settingsAudio` / `settingsGeneral` を採用。`showTooltips` の正式所属は Display。
 
 Settings 保存失敗等の Non-blocking メッセージキー（例: `settingsSaveFailed`）は実装 Phase で追加可。本設計では必須キーとして確定しない。
 
@@ -591,7 +592,7 @@ Switch は次を認識可能にする:
 ### 11.5 永続化
 
 - Tooltip ON / OFF は **再起動後も維持**
-- Concrete storage — [settings-persistence.md](settings-persistence.md)（**Design Complete** / **Not Implemented**）
+- Concrete storage — [settings-persistence.md](settings-persistence.md)（**Implemented** `f8dc189`）
 - Audio Output Preference 永続化（Phase G）とは **別 Repository / 別 key namespace** を維持
 
 ## 12. Error policy
@@ -657,7 +658,7 @@ session 中のみ変更を維持し再起動で失われる、は **採用しな
 
 Application Composition の技術正本は [media-technology.md](../architecture/media-technology.md) §Application Composition。本節は **Settings 基盤追加** を定義する。
 
-### 13.1 目標構成（Settings 実装 Phase — 設計確定・未実装）
+### 13.1 目標構成（Settings — **Implemented** `dccf48f`）
 
 ```text
 NainaiApp                          ← Composition Root
@@ -684,12 +685,13 @@ NainaiApp                          ← Composition Root
 
 Audio Output Phase C は共通 Shell 未実装でも Section 単体を Modal / 暫定 Route で開発可能（[audio-output-settings.md](audio-output-settings.md) §14）。
 
-推奨実装順（docs 上の推奨。client レーン判断は別）:
+推奨実装順（Historical — 完了済み。client `dccf48f`）:
 
 1. `AppSettings` + `SettingsRepository` interface + `SettingsController` + Tooltip Policy
 2. Display Section（showTooltips）+ Settings Shell 最小構成
-3. Audio Output Section を Shell へ統合（Phase C）
-4. Settings Launcher 実装（Presentation — §15 Design Complete / Not Implemented）
+3. Audio Output Section を Shell へ統合（Phase C / I-3B）
+4. Settings Launcher 実装 — **Implemented**
+5. Media Tooltip Policy migration（I-3C）+ Category Presentation（I-3D）
 
 ### 13.3 TooltipPolicy の App 全体提供
 
@@ -724,10 +726,11 @@ Settings Launcher の **物理配置** は本節で **Design Complete**。Presen
 | 項目 | 状態 |
 |------|------|
 | Launcher **physical placement** | **Design Complete** |
-| Launcher **implementation** | **Not Implemented** |
+| Launcher **implementation** | **Implemented**（`Icons.settings_rounded`） |
 | Common Settings Core | client `4109a13` **Implemented** |
-| Tooltip ON/OFF wiring | **Design Complete** / **Not Implemented** |
-| Audio Output Settings Section | Phase C **Design Complete** / **Not Implemented**（client 正式 main 反映まで Implemented にしない） |
+| Tooltip ON/OFF wiring | **Implemented**（I-3C — [settings-shell.md](settings-shell.md) §19.3） |
+| Audio Output Settings Section | **Implemented**（I-3B — [settings-shell.md](settings-shell.md) §19.2） |
+| Category Presentation | **Implemented**（I-3D — Display / Audio） |
 
 ### 15.1 正式配置（確定）
 
@@ -831,9 +834,8 @@ Launcher は **App Utility** であり、Media レイアウトそのものを再
 |------|------|
 | Tooltip（ja / en） | 設定 / Settings（ARB `settings` — §8.1） |
 | Semantics label | Tooltip と同じ |
-| **現在（client 実装）** | Visual Tooltip **Always enabled**。Common Settings ON/OFF 制御・`showTooltips` runtime 参照は **未実装** |
-| **将来（`showTooltips` 導入後）** | ON → Visual Tooltip 表示 / OFF → Visual Tooltip 非表示。**Semantics label は ON/OFF に関係なく維持**（§6.3）。default **`true`** |
-| Launcher | 将来 `showTooltips` の制御対象。**Tooltip ON/OFF 自体は未実装** |
+| **現在（client `dccf48f`）** | `showTooltips` で Visual Tooltip ON/OFF（`TooltipPolicy` / `NainaiTooltip`）。**Semantics label は ON/OFF に関係なく維持**（§6.3）。default **`true`** |
+| **Historical（I-3C 前）** | Visual Tooltip Always enabled / Media raw Tooltip が Policy 非連動（I-3C で解消 — [settings-shell.md](settings-shell.md) §19.3） |
 
 ### 15.10 Navigation contract（確定）
 
@@ -927,11 +929,13 @@ Audio Output Section の Widget test は [audio-output-settings.md](audio-output
 
 | 項目 | 状態 |
 |------|------|
-| Common Settings Core | client `4109a13` **Implemented**（Model / Controller / interface） |
-| Tooltip ON / OFF（Policy / UI wiring） | **Design Complete** / **Not Implemented** |
-| **現在の Visual Tooltip** | **Always enabled**（`TooltipPolicy` 未配線） |
-| **将来 `showTooltips` default** | **`true`**（導入後の初回 / 未保存時） |
-| Concrete Persistence | **[Design Complete — Selected](settings-persistence.md)** / **Not Implemented** |
-| Settings Launcher physical placement | **Design Complete**（§15） |
-| Settings Launcher implementation | **Not Implemented** |
-| Audio Output Phase C | **Design Complete**（[audio-output-settings.md](audio-output-settings.md)）/ **未実装** |
+| Common Settings Core | client `4109a13` **Implemented** |
+| Concrete Persistence | **Implemented**（`f8dc189`） |
+| Settings Shell / Launcher | **Implemented** |
+| Tooltip ON / OFF（Policy / Media migration） | **Implemented**（I-3C） |
+| Audio Output Section Production Wiring | **Implemented**（I-3B） |
+| Settings Category Presentation（Display / Audio） | **Implemented**（I-3D） |
+| Phase 2 automated baseline | client **`dccf48f`** — **526 PASS** / analyze PASS |
+| 実機 Acceptance / iOS compile | **Pending**（[settings-shell.md](settings-shell.md) §19.5） |
+
+詳細 Implementation Result: **[settings-shell.md](settings-shell.md) §19**。

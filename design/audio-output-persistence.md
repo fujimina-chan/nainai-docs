@@ -9,13 +9,13 @@ Audio Output **Phase G** — ユーザーが **明示的に選択した** 音声
 - [Windows hot unplug / fallback（Phase D）](audio-output-hot-unplug.md)
 - [Common Settings Concrete Persistence](settings-persistence.md)
 
-**client 参照:** `4109a13` — `AudioOutputPreference` / `AudioOutputController` / `AudioOutputService` / `AudioOutputCapabilities` **Implemented**。Persistence **Not Implemented**。
+**client 参照:** `dccf48f` — Preference persistence **Implemented**（`32ad6f2`）。I-3B で Settings selection command path へ配線済み。
 
 ## 1. 位置づけ
 
 | Phase | 内容 | 状態 |
 |-------|------|------|
-| **G** | **Audio Output Preference 永続化・起動時復元**（本書） | **Design Complete** / **Not Implemented** |
+| **G** | **Audio Output Preference 永続化・起動時復元**（本書） | **Design Complete** / **Implemented**（コード）/ 実機 save-restore Acceptance **Pending** |
 
 ## 2. 目的と Phase D 決定
 
@@ -590,7 +590,7 @@ Coordinator コンストラクタに **`AudioOutputService` を渡さない**。
 | 項目 | 状態 |
 |------|------|
 | Phase G design | **Design Complete** |
-| Phase G implementation | **Not Implemented** |
+| Phase G implementation | **Implemented**（`32ad6f2`）/ 実機 save-restore **Pending** |
 | Phase D → Preference | **B — runtime only fallback, persist 保持** |
 | Dependency | **Coordinator → Controller + Repository（Service 直接参照なし）** |
 | Readiness | **`Controller.initialAvailableDevices`** → Service eager capture（`availableDevicesStream.first` **廃止**、lazy subscription **禁止**） |

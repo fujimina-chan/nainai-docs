@@ -110,7 +110,7 @@ Windows では Audio / Video 共通で、Playback Controls を **`Scaffold.botto
 
 Breakpoint 正本: [design-system.md](design-system.md)（desktop 800px、compact landscape `height ≤ 480` かつ `width > height`、single-row min width 720px）。
 
-**Tooltip — 現在と将来:** 現在 client は Visual Tooltip **Always enabled**。Common Settings / `showTooltips` による ON/OFF は **[Design Complete](settings.md) / Not Implemented**（§6.0）。本書では重複定義しない。
+**Tooltip — 現在:** client `dccf48f` で `TooltipPolicy` / `NainaiTooltip` **Implemented**（I-3C）。`showTooltips` ON/OFF は visual のみ。正本 [settings.md](settings.md) §6 / [settings-shell.md](settings-shell.md) §19.3。本書では重複定義しない。
 
 **検証（client `68ff1b4`）:** `flutter analyze` PASS / `flutter test` 214 tests PASS / Windows 実機確認 OK。
 
@@ -296,12 +296,12 @@ Volume コントロールは Slider + 整数パーセント表示 + Volume ア�
 Phase 2 UI に次を先行表示しない。
 
 - Editor Navigation / Playlist / Library
-- Settings Screen 本体（Display / Audio Section — **Settings Launcher 除く**。Launcher は §14）
+- Settings Screen 本体（Display / Audio Section — **Implemented** I-3。Launcher は §14）
 - Timeline / Equalizer / Compressor 等
 
-## 14. Settings Launcher（App-level — Design Complete）
+## 14. Settings Launcher（App-level — Implemented）
 
-正本: [settings.md](settings.md) §15。**Settings Launcher implementation:** **Not Implemented**。
+正本: [settings.md](settings.md) §15。**Settings Launcher implementation:** **Implemented**（`Icons.settings_rounded`）。Phase I-3 結果: [settings-shell.md](settings-shell.md) §19。
 
 ### 14.1 配置（確定）
 
@@ -366,14 +366,22 @@ client `68ff1b4` で確定した、Audio / Video を **Bottom Panel 除く領域
 ### 14.9 視覚・A11y / Tooltip
 
 - SafeArea + Spacing Token、hit target **44 logical px 以上**
-- **現在（client）:** Visual Tooltip **Always enabled**（`showTooltips` runtime 参照なし）
-- **将来:** Tooltip / Semantics label は 設定 / Settings（ARB `settings`）。`showTooltips == false` 時は Visual Tooltip のみ非表示、Semantics **維持**（[settings.md](settings.md) §6.3）
+- **現在（client `dccf48f`）:** `showTooltips` で Visual Tooltip ON/OFF（`TooltipPolicy` / `NainaiTooltip` — I-3C）
+- Tooltip / Semantics label は 設定 / Settings（ARB `settings`）。`showTooltips == false` 時は Visual Tooltip のみ非表示、Semantics **維持**（[settings.md](settings.md) §6.3）
 
 ### 14.10 Navigation
 
 Activate → **`openSettings()`** → Common Settings Shell（Display + Audio）。**Gear → `AudioOutputSettingsSection` 直結禁止**。
 
-## 15. 未確定事項
+## 15. Phase 2 baseline / Pending Acceptance
+
+| 項目 | 状態 |
+|------|------|
+| Automated baseline（client `dccf48f`） | **526 tests PASS** / analyze PASS / analyze --no-pub PASS / diff-check PASS |
+| Settings Shell / Tooltip / Audio Output wiring | **Implemented**（I-3 — [settings-shell.md](settings-shell.md) §19） |
+| 実機 Acceptance（Windows / Android / iOS / Bluetooth / iOS compile） | **Pending**（[settings-shell.md](settings-shell.md) §19.5） |
+
+## 16. 未確定事項
 
 - Static Audio Placeholder の具体ビジュアル
 - Banner の自動消失時間・clear 専用 UI / API

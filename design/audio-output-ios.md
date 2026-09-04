@@ -16,11 +16,11 @@ Service / platform 抽象の正本は [audio-output.md](audio-output.md)。Setti
 | Phase | 内容 | 状態 |
 |-------|------|------|
 | A/B | 共通 Model / Service 抽象 / Windows 実装 | **Implemented** |
-| C | Windows Settings subsystem | **Design Complete** / Not Implemented |
-| D | Windows hot unplug / fallback | **Design Complete** / Not Implemented |
-| E | Android System Route Picker | **Design Complete** / Not Implemented |
-| **F** | **iOS platform route picker**（本書） | **Design Complete** / **Not Implemented** |
-| G | Preference 永続化 | 未設計詳細 / 未実装 |
+| C | Windows Settings subsystem | **Implemented**（I-3B） |
+| D | Windows hot unplug / fallback | **Implemented**（コード）/ 実機 **Pending** |
+| E | Android System Route Picker | **Implemented** / 実機 **Pending** |
+| **F** | **iOS platform route picker**（本書） | **Implemented**（コード + I-3B wiring）/ **iOS compile・実機 Pending** |
+| G | Preference 永続化 | **Implemented**（コード） |
 
 **Design Complete の範囲:** 方式比較と **1 方式への選定** / Capability / Service API mapping / Presentation 境界 / Permissions / Settings UI / Error / Lifecycle / Phase G 境界 / テスト方針 / Localization キー案 / 実機検証項目。
 
@@ -456,6 +456,9 @@ Simulator のみでは BT / AirPlay 完全検証 **不可**。
 | 項目 | 状態 |
 |------|------|
 | Phase F 設計 | **Design Complete** |
-| Phase F 実装 | **Not Implemented** |
+| Phase F 実装 | **Implemented**（Native `25414c3` 等 + Settings wiring I-3B） |
+| Settings Presentation Mode | `embeddedSystemRoutePicker`（I-3B） |
 | Concrete iOS route technology | **Selected** — `AVRoutePickerView` + `UiKitView` |
-| iOS 実機 route picker 検証 | 実装 Phase で必須 |
+| iOS native compile / `flutter build ios` | **Known / Pending verification**（Windows host 未検証 — [settings-shell.md](settings-shell.md) §19.2） |
+| iOS 実機 route picker / Bluetooth / AirPods / car Bluetooth | **Pending Acceptance**（§19.5 同） |
+| Phase I-3 baseline | client `dccf48f` — 526 PASS |

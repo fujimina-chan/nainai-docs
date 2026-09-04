@@ -6,8 +6,15 @@
 |-------|------|---------------|------|
 | **A** | 共通 Model / Service 抽象 / Capability | `4a34d85` | **Implemented** |
 | **B** | Windows `MediaKitPlaybackService` が `AudioOutputService` も実装 | `c3239f3` | **Implemented** |
+| **C** | Windows Settings UI + Controller | `901e4e0` / `6b0decd` | **Implemented** |
+| **D** | Windows hot unplug / fallback | `c5c979e` | **Implemented**（コード）/ 実機 **Pending** |
+| **E** | Android System Route Picker | `9223c59` 等 | **Implemented** / 実機 **Pending** |
+| **F** | iOS System Route Picker | `25414c3` 等 | **Implemented** / compile・実機 **Pending** |
+| **G** | Preference 永続化 | `32ad6f2` | **Implemented**（コード）/ 実機 **Pending** |
+| **H** | Application Composition | `f280a11` | **Implemented** |
+| **I-3** | Settings Shell Audio wiring / Tooltip / Category | `c3155be` / `2e3dc09` / `dccf48f` | **Implemented** — [settings-shell.md](settings-shell.md) §19 |
 
-本ドキュメントは設計正本として実装状態も記録する。**Phase B 完了時点でも、ユーザーが Settings 画面から出力デバイスを選択できる状態ではない。** Settings UI・`AudioOutputController`・Application Composition wiring・hot unplug fallback・Android / iOS 実装・永続化は未実装。
+本ドキュメントは設計正本として実装状態も記録する。**Phase B 単体では Settings から選択できない。** Phase C〜I-3 により Settings → Audio → Audio Output が Production wiring 済み（client `dccf48f`）。**Implemented ≠ 実機 Acceptance 完了**（Pending: [settings-shell.md](settings-shell.md) §19.5）。
 
 関連:
 
@@ -40,17 +47,17 @@
 
 共通化するのはユーザーの目的（出力先を選ぶ）と、ドメインモデル / Service 抽象 / Capability 判定までとする。実際の選択 UX は各 OS の能力に合わせる。
 
-### 1.3 スコープ外
+### 1.3 スコープ外（本書 Phase A/B 時点の境界 — Historical）
+
+当時 Phase A/B 正本のスコープ外（後続 Phase / I-3 で実装済み。状態は冒頭表）:
 
 - Volume / Mute（[media-playback.md](media-playback.md) の既存設計を変更しない）
 - OS 全体のシステム音量変更
 - Equalizer / 空間オーディオ等の拡張
-- 設定画面全体の Presentation 確定
-- 設定永続化 library の選定
-- Settings UI / `AudioOutputController` / Application Composition wiring（Phase C 以降）
-- Android / iOS platform 実装（Phase E / F）
-- hot unplug fallback（Phase D）
-- 設定永続化（Phase G）
+- Settings UI / `AudioOutputController` / Application Composition wiring（→ Phase C / H / I-3B）
+- Android / iOS platform 実装（→ Phase E / F）
+- hot unplug fallback（→ Phase D）
+- 設定永続化（→ Phase G）
 
 ## 2. Windows 設計（確定候補）
 
@@ -215,7 +222,7 @@ media_kit `AudioDevice.auto()`（`name == 'auto'`）を System Default とする
 
 ## 3. Android 設計
 
-Phase E 詳細設計正本: **[audio-output-android.md](audio-output-android.md)**（**Design Complete** / **Not Implemented**）。
+Phase E 詳細設計正本: **[audio-output-android.md](audio-output-android.md)**（**Design Complete** / **Implemented** — 実機 Acceptance **Pending**）。
 
 ### 3.1 方針（要約）
 
@@ -283,7 +290,7 @@ OS がルーティングを管理するため、アプリ再起動後もユー�
 
 ## 4. iOS 設計
 
-Phase F 詳細設計正本: **[audio-output-ios.md](audio-output-ios.md)**（**Design Complete** / **Not Implemented**）。
+Phase F 詳細設計正本: **[audio-output-ios.md](audio-output-ios.md)**（**Design Complete** / **Implemented** — iOS compile・実機 **Pending**）。
 
 ### 4.1 方針（要約）
 
@@ -551,7 +558,7 @@ NainaiApp
 
 - `Player` は `MediaKitPlaybackService` 内部で生成・所有する
 - Windows では `MediaKitPlaybackService` が `AudioOutputService` も実装済み（Phase B）
-- **`AudioOutputController` / Settings UI / Application Composition wiring は未実装** — Service API は存在するが、ユーザー向け Settings からは選択できない
+- **`AudioOutputController` / Settings UI / Application Composition wiring** — Phase C / H / I-3B で **Implemented**（冒頭 Phase 表）
 
 ### 9.2 Phase C 目標構成（Windows — 設計確定）
 
@@ -578,7 +585,7 @@ Windows と Mobile で具象 Service の組み合わせは異なってよい。�
 
 **Current（Phase B 実装済み）:** `MediaController.dispose()` が注入 `MediaPlaybackService` を dispose する。詳細は [media-playback.md](media-playback.md) §12、[media-technology.md](../architecture/media-technology.md) §Application Composition。
 
-**Phase C 以降（設計確定・未実装）:** 共有 `MediaKitPlaybackService` の唯一 owner は `NainaiApp`。`MediaController` / `AudioOutputController` は Service を dispose しない。`MediaController` からの `MediaPlaybackService.dispose()` 呼び出しを **除去** する。詳細は [audio-output-settings.md](audio-output-settings.md) §6。
+**Phase C 以降（Implemented）:** 共有 `MediaKitPlaybackService` の唯一 owner は `NainaiApp`。`MediaController` / `AudioOutputController` は Service を dispose しない。詳細は [audio-output-settings.md](audio-output-settings.md) §6 / [audio-output-composition.md](audio-output-composition.md)。
 
 **共通原則（Current / Phase C 以降）:**
 
@@ -701,11 +708,13 @@ Phase B + G ──▶ Windows 起動時復元完成
 |-------|------|------|------|
 | **A** | 共通 Model / `AudioOutputService` 抽象 / Capability | **Implemented** | なし |
 | **B** | Windows `MediaKitPlaybackService` が `AudioOutputService` も実装 | **Implemented** | A |
-| **C** | Windows Settings UI + `AudioOutputController` + Composition wiring | **Design Complete**（Launcher placement: **[Design Complete](settings.md) §15** / implementation **Not Implemented**） | A, B |
-| **D** | Windows hot unplug / fallback | **Design Complete**（[audio-output-hot-unplug.md](audio-output-hot-unplug.md)）/ **Not Implemented** | B |
-| **E** | Android platform output picker | **Design Complete**（[audio-output-android.md](audio-output-android.md)）/ **Not Implemented** | A |
-| **F** | iOS System Route Picker | **Design Complete**（[audio-output-ios.md](audio-output-ios.md)）/ **Not Implemented** | A |
-| **G** | 設定永続化（`AudioOutputPreference`） | 未実装 | A |
+| **C** | Windows Settings UI + `AudioOutputController` + Composition wiring | **Implemented**（I-3B 含む） | A, B |
+| **D** | Windows hot unplug / fallback | **Implemented**（コード）/ 実機 **Pending** | B |
+| **E** | Android platform output picker | **Implemented** / 実機 **Pending** | A |
+| **F** | iOS System Route Picker | **Implemented** / compile・実機 **Pending** | A |
+| **G** | 設定永続化（`AudioOutputPreference`） | **Implemented**（コード）/ 実機 **Pending** | A |
+| **H** | Application Composition | **Implemented** | A〜G |
+| **I-3** | Settings Shell Audio / Tooltip / Category | **Implemented** `dccf48f` | C〜H / Settings |
 
 ### 並行可能範囲
 

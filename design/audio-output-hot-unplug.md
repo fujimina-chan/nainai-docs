@@ -17,11 +17,11 @@ Service / platform 抽象の正本は [audio-output.md](audio-output.md)。Phase
 |-------|------|------|
 | A | 共通 Model / Service 抽象 / Capability | **Implemented** |
 | B | Windows `MediaKitPlaybackService` が `AudioOutputService` も実装 | **Implemented** |
-| C | Windows Audio Output Settings subsystem | **Design Complete**（client 実装は別レーン。docs Implemented 反映は別途） |
-| **D** | **Windows hot unplug / automatic fallback**（本書） | **Design Complete** / **Implemented: No** |
-| E | Android platform output picker UI | 未設計詳細 / 未実装 |
-| F | iOS route picker UI | 未設計詳細 / 未実装 |
-| G | `AudioOutputPreference` 永続化 | 未設計詳細 / 未実装 |
+| C | Windows Audio Output Settings subsystem | **Implemented**（I-3B） |
+| **D** | **Windows hot unplug / automatic fallback**（本書） | **Implemented**（コード `c5c979e`）/ 実機 Acceptance **Pending** |
+| E | Android platform output picker UI | **Implemented** / 実機 **Pending** |
+| F | iOS route picker UI | **Implemented** / compile・実機 **Pending** |
+| G | `AudioOutputPreference` 永続化 | **Implemented**（コード）/ 実機 **Pending** |
 
 **Design Complete の範囲:** reconciliation scheduler / fallback episode / retry / notification event / ownership / race protection / reconnect / Phase G 境界 / Playback invariant / テスト方針 / Localization キー案。
 
@@ -441,5 +441,7 @@ Banner は Media subtree が `pendingNotification.notificationId` と `lastHandl
 | 項目 | 状態 |
 |------|------|
 | Phase D 設計 | **Design Complete** |
-| Phase D 実装 | **No**（未着手） |
-| Windows 実機 hot unplug 検証 | 実装 Phase で必須 |
+| Phase D 実装 | **Implemented**（`c5c979e`） |
+| `AudioOutputNotificationHost` | **Implemented**（App-level — Settings Shell 外） |
+| Windows 実機 hot unplug / fallback 検証 | **Pending Acceptance**（[settings-shell.md](settings-shell.md) §19.5） |
+| Phase I-3 baseline | client `dccf48f` — 526 PASS |

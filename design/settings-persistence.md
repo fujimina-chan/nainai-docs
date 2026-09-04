@@ -15,8 +15,8 @@
 |------|------|
 | スコープ | `SettingsRepository` concrete 実装技術、保存 key、missing / invalid / failure 挙動、テスト境界 |
 | 第一保存対象 | `settings.showTooltips`（`bool`） |
-| client 参照 | `4109a13` — `AppSettings` / `SettingsController` / `SettingsRepository` interface **Implemented** |
-| 状態 | **Design Complete** / **Concrete Technology Selected** / **Implementation Not Implemented** |
+| client 参照 | `dccf48f` — Concrete `SharedPreferencesSettingsRepository` **Implemented**（導入 `f8dc189`）。Phase I-3 同期: [settings-shell.md](settings-shell.md) §19 |
+| 状態 | **Design Complete** / **Concrete Technology Selected** / **Implemented** |
 
 ### 1.1 Status（確定）
 
@@ -24,9 +24,9 @@
 |------|------|
 | Common Settings Persistence（本書） | **Design Complete** |
 | Concrete Technology | **Selected** — `shared_preferences`（§5） |
-| Concrete Repository implementation | **Not Implemented** |
+| Concrete Repository implementation | **Implemented**（`f8dc189`） |
 | Common Settings Core（Model / Controller / interface） | client `4109a13` **Implemented** |
-| Tooltip Policy / Display Section UI wiring | **Not Implemented**（Visual Tooltip **Always enabled**） |
+| Tooltip Policy / Display Section UI wiring | **Implemented**（I-3C / I-3D — [settings-shell.md](settings-shell.md) §19） |
 
 ### 1.2 Android minSdk compatibility（確定 — 2026-08-30 実値確認）
 
@@ -405,7 +405,7 @@ settings.yyy
 
 ## 15. pubspec への影響（docs 記載のみ）
 
-実装 Phase で client `pubspec.yaml` に追加予定:
+実装済み（client）: `pubspec.yaml` に `shared_preferences` 追加済み（`f8dc189` 以降）。
 
 ```yaml
 dependencies:
@@ -474,7 +474,7 @@ Concrete 追加後:
 3. Composition Root — `SharedPreferencesAsync()` → Repository → `SettingsController`
 4. `initialize()` 起動時 invoke
 5. Repository unit tests（§16）
-6. Display Section / TooltipPolicy wiring（別 Phase — 本書範囲外）
+6. Display Section / TooltipPolicy wiring — **Implemented**（I-3 — [settings-shell.md](settings-shell.md) §19）
 
 ## 18. 状態まとめ
 
@@ -483,12 +483,13 @@ Concrete 追加後:
 | Common Settings Core | client `4109a13` **Implemented** |
 | Common Settings Persistence design | **Design Complete** |
 | Concrete Technology | **Selected** — `shared_preferences` + `SharedPreferencesAsync` |
-| Concrete Repository implementation | **Not Implemented** |
+| Concrete Repository implementation | **Implemented**（`f8dc189`） |
 | Planned dependency | `shared_preferences: ^2.5.5` |
 | Planned class | `SharedPreferencesSettingsRepository` |
 | Primary key | `settings.showTooltips` |
 | Android minSdk compatibility | **24 ≥ 24 — OK**（§1.2） |
-| AudioOutputPreference persistence | Phase G — **別設計**（本書対象外） |
+| AudioOutputPreference persistence | Phase G — **Implemented**（別正本 [audio-output-persistence.md](audio-output-persistence.md)） |
+| Phase I-3 baseline | client `dccf48f` — [settings-shell.md](settings-shell.md) §19 |
 
 ## 19. 公式 Source（2026-08-30 確認）
 

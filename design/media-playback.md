@@ -304,9 +304,9 @@ dispose 後に `notifyListeners` しない Guard を持つ。
 
 **Current ownership:** `MediaController` が注入 `MediaPlaybackService` を dispose する（[media-technology.md](../architecture/media-technology.md) §Application Composition）。
 
-#### Phase C 以降（設計確定・未実装）
+#### Phase C 以降（Implemented）
 
-Audio Output Phase C で `MediaKitPlaybackService` を `MediaController` と `AudioOutputController` が共有するため、**`MediaController.dispose()` から `MediaPlaybackService.dispose()` を除去** する。Service dispose は `NainaiApp` が担当。詳細は [audio-output-settings.md](audio-output-settings.md) §6。
+Audio Output Phase C で `MediaKitPlaybackService` を `MediaController` と `AudioOutputController` が共有するため、Service dispose は `NainaiApp` が担当。詳細は [audio-output-settings.md](audio-output-settings.md) §6 / [audio-output-composition.md](audio-output-composition.md)。
 
 ## 13. エラー
 

@@ -18,13 +18,13 @@ Service / platform 抽象の正本は [audio-output.md](audio-output.md)。Local
 |-------|------|------|
 | A | 共通 Model / Service 抽象 / Capability | **Implemented**（`4a34d85`） |
 | B | Windows `MediaKitPlaybackService` が `AudioOutputService` も実装 | **Implemented**（`c3239f3`） |
-| **C** | **Windows Audio Output Settings subsystem**（本書） | **Design Complete**（実装未着手） |
+| **C** | **Windows Audio Output Settings subsystem**（本書） | **Implemented**（Core `901e4e0` / `6b0decd` + Production wiring I-3B `c3155be`） |
 
 **Design Complete の範囲:** Controller / State / Composition / Ownership / Settings Section / Selection / Error / Localization / Accessibility / Testing。
 
-**Settings Launcher physical placement:** **[Design Complete](settings.md) §15**。**Settings Launcher implementation:** **Not Implemented**。fixed Bottom Control は client `68ff1b4` で **Implemented**。共通 Settings Shell / Navigation は [settings.md](settings.md) が正本。
+**Settings Launcher:** **Implemented**（[settings.md](settings.md) §15）。fixed Bottom Control は client `68ff1b4` で **Implemented**。共通 Settings Shell は [settings.md](settings.md) / [settings-shell.md](settings-shell.md) が正本。Phase I-3 結果: [settings-shell.md](settings-shell.md) §19。
 
-Phase C 実装完了時点でユーザーが Settings から出力デバイスを切り替えられる。**永続化・hot unplug 自動 fallback・Android/iOS UI は含まない。**
+Phase C 実装完了時点でユーザーが Settings から出力デバイスを切り替えられる。永続化・hot unplug・Android/iOS は後続 Phase（いずれもコード **Implemented** — 実機 Acceptance は [settings-shell.md](settings-shell.md) §19.5）。
 
 ## 2. 設計原則
 
@@ -57,16 +57,16 @@ Phase C 実装完了時点でユーザーが Settings から出力デバイス�
 | 15 | Accessibility |
 | 16 | テスト方針 |
 
-### 3.2 含まない（後続 Phase）
+### 3.2 含まない（後続 Phase — 実装状態は各正本）
 
-| Phase | 責務 |
-|-------|------|
-| **D** | hot unplug 検知、選択中デバイス消失時の **自動** System Default fallback、disconnect 通知 | [audio-output-hot-unplug.md](audio-output-hot-unplug.md) **Design Complete** / 未実装 |
-| **E** | Android platform output picker UI |
-| **F** | iOS System Route Picker UI | **Design Complete**（[audio-output-ios.md](audio-output-ios.md)）/ **Not Implemented** |
-| **G** | `AudioOutputPreference` 永続化、再起動後復元 |
+| Phase | 責務 | 状態 |
+|-------|------|------|
+| **D** | hot unplug / automatic fallback / disconnect 通知 | **Implemented**（コード）/ 実機 **Pending** — [audio-output-hot-unplug.md](audio-output-hot-unplug.md) |
+| **E** | Android platform output picker UI | **Implemented** / 実機 **Pending** — [audio-output-android.md](audio-output-android.md) |
+| **F** | iOS System Route Picker UI | **Implemented** / compile・実機 **Pending** — [audio-output-ios.md](audio-output-ios.md) |
+| **G** | `AudioOutputPreference` 永続化、再起動後復元 | **Implemented**（コード）— [audio-output-persistence.md](audio-output-persistence.md) |
 
-Phase C は **「現在取得できている一覧と currentSelection を表示し、ユーザー操作で切り替える」** ところまで。
+Phase C は **「現在取得できている一覧と currentSelection を表示し、ユーザー操作で切り替える」** ところまで（本書スコープ）。後続 Phase の実装結果は I-3B で Settings Shell へ統合済み（[settings-shell.md](settings-shell.md) §19.2）。
 
 ## 4. AudioOutputController
 
@@ -430,10 +430,10 @@ Settings Launcher の **物理配置** は **[settings.md](settings.md) §15 で
 | 項目 | 状態 |
 |------|------|
 | Launcher **physical placement** | **Design Complete**（[settings.md](settings.md) §15） |
-| Launcher **implementation** | **Not Implemented** |
+| Launcher **implementation** | **Implemented** |
 | fixed Bottom Control | **Implemented**（`68ff1b4` — [phase2-ui.md](phase2-ui.md) §4.1） |
-| Common Settings / Tooltip ON/OFF | **[Core Design Complete](settings.md)** / **Not Implemented**（Visual Tooltip **現在 Always enabled**） |
-| Audio Output Settings UI / Controller | Phase C **Design Complete** / **Not Implemented** |
+| Common Settings / Tooltip ON/OFF | **Implemented**（I-3C — [settings-shell.md](settings-shell.md) §19.3） |
+| Audio Output Settings UI / Controller | Phase C + I-3B **Implemented**（[settings-shell.md](settings-shell.md) §19.2） |
 
 **確定方針（要約）:**
 
@@ -527,18 +527,20 @@ Service Phase B テスト（device mapping / `selectDevice` 規則等）と **�
 
 | Phase | 責務 | 状態 |
 |-------|------|------|
-| **C** | Windows Audio Output Settings subsystem（Controller / Section / wiring / ユーザー操作切替） | **Design Complete** |
+| **C** | Windows Audio Output Settings subsystem（Controller / Section / wiring / ユーザー操作切替） | **Implemented**（I-3B production wiring 含む） |
 | | Settings Launcher physical placement | **Design Complete**（[settings.md](settings.md) §15） |
-| | Settings Launcher implementation | **Not Implemented** |
-| **D** | hot unplug、選択中デバイス消失の **自動** fallback、通知 | **Design Complete**（[audio-output-hot-unplug.md](audio-output-hot-unplug.md)）/ **Not Implemented** |
-| **E** | Android platform output picker Settings UI | **Design Complete**（[audio-output-android.md](audio-output-android.md)）/ **Not Implemented** |
-| **F** | iOS route picker Settings UI | **Design Complete**（[audio-output-ios.md](audio-output-ios.md)）/ **Not Implemented** |
-| **G** | Preference persistence、再起動復元 |
+| | Settings Launcher implementation | **Implemented** |
+| **D** | hot unplug、選択中デバイス消失の **自動** fallback、通知 | **Implemented**（コード）/ 実機 **Pending** |
+| **E** | Android platform output picker Settings UI | **Implemented** / 実機 **Pending** |
+| **F** | iOS route picker Settings UI | **Implemented** / compile・実機 **Pending** |
+| **G** | Preference persistence、再起動復元 | **Implemented**（コード） |
+| **I-3** | Settings Shell Audio wiring / Tooltip / Category | **Implemented** `dccf48f` — [settings-shell.md](settings-shell.md) §19 |
 
-## 20. 未確定事項（Phase C 実装前）
+## 20. 備考（実装後）
 
 | 項目 | 備考 |
 |------|------|
-| `SettingsController` との compose タイミング | 独立 `AudioOutputController` を Phase C で先行実装可。[settings.md](settings.md) §4.5 |
-| Settings 全体 Navigation 構造 | Shell / Display / Tooltip / Launcher は [settings.md](settings.md)。Audio Output Section 以外の Phase C 外項目も同書 |
+| `SettingsController` との compose | 独立 `AudioOutputController` — [settings.md](settings.md) §4.5 / Phase H |
+| Settings 全体 Navigation 構造 | Shell / Display / Tooltip / Launcher は [settings.md](settings.md)。Audio Output Section 以外も同書 |
 | Section 内 Banner 自動消失 | [phase2-ui.md](phase2-ui.md) と同様、勝手に秒数確定しない |
+| Pending Acceptance | [settings-shell.md](settings-shell.md) §19.5 |

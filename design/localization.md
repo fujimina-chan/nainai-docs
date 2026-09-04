@@ -31,7 +31,7 @@ nainai-client に導入済みの UI 文字列 Localization 基盤を定義する
 | 言語切替 UI | **未実装** |
 | Locale 永続保存 | **未実装** |
 | LocaleController | **未実装** |
-| `SettingsController`（`AppSettings` / Tooltip 等） | **[設計確定・未実装](settings.md)** — Locale 用 Controller とは別物 |
+| `SettingsController`（`AppSettings` / Tooltip 等） | **[Implemented](settings.md)**（`dccf48f`）— Locale 用 Controller とは別物 |
 
 ## 3. 実装済み UI 文言（日本語）
 
@@ -74,7 +74,7 @@ Service 層へ `BuildContext` は注入しない。`MediaTypeGroupLabelProvider`
 
 ## 5. Settings 向けキー
 
-共通 Settings（Display / Tooltip / Audio 等）のキー設計は [settings.md](settings.md) §8。音声出力 Settings 向けキーは [audio-output-settings.md](audio-output-settings.md) §16 および [audio-output.md](audio-output.md) §11。いずれも **未実装**。Settings UI 実装 Phase で ARB へ追加する。
+共通 Settings（Display / Tooltip / Audio 等）のキー設計は [settings.md](settings.md) §8。実装キー例: `settingsDisplay` / `settingsAudio` / `showTooltips`（I-3D）。音声出力 Settings 向けキーは [audio-output-settings.md](audio-output-settings.md) §16 および [audio-output.md](audio-output.md) §11。Settings UI / Tooltip Policy は client `dccf48f` で **Implemented**（[settings-shell.md](settings-shell.md) §19）。
 
 ## 6. 検証（client）
 
@@ -94,4 +94,6 @@ client commit: `7e7c245` — `feat: UIのLocalization基盤と日本語表示を
 - Locale 永続保存
 - LocaleController
 - `SettingsController`（[settings.md](settings.md) — Locale Controller とは別）
-- Tooltip 表示 ON/OFF — [settings.md](settings.md) **Core Design Complete** / **未実装**（現在 client は Tooltip 常時有効）
+- Tooltip 表示 ON/OFF — [settings.md](settings.md) **Implemented**（I-3C — client `dccf48f`）
+- Phase I-3 詳細 — [settings-shell.md](settings-shell.md) §19
+- 実機 Acceptance / iOS compile — **Pending**（[settings-shell.md](settings-shell.md) §19.5）

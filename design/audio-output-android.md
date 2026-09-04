@@ -16,11 +16,11 @@ Service / platform 抽象の正本は [audio-output.md](audio-output.md)。Setti
 | Phase | 内容 | 状態 |
 |-------|------|------|
 | A/B | 共通 Model / Service 抽象 / Windows 実装 | **Implemented** |
-| C | Windows Settings subsystem | **Design Complete** / Not Implemented |
-| D | Windows hot unplug / fallback | **Design Complete** / Not Implemented |
-| **E** | **Android platform route picker**（本書） | **Design Complete** / **Not Implemented** |
-| F | iOS route picker | 未設計詳細 / 未実装 |
-| G | Preference 永続化 | 未設計詳細 / 未実装 |
+| C | Windows Settings subsystem | **Implemented**（I-3B — [settings-shell.md](settings-shell.md) §19.2） |
+| D | Windows hot unplug / fallback | **Implemented**（コード）/ 実機 Acceptance **Pending** |
+| **E** | **Android platform route picker**（本書） | **Implemented**（Native + I-3B Settings wiring）/ 実機 Acceptance **Pending** |
+| F | iOS route picker | **Implemented** / compile・実機 **Pending** |
+| G | Preference 永続化 | **Implemented**（コード）/ 実機 **Pending** |
 
 **Design Complete の範囲:** 方式比較と **1 方式への選定** / Capability / Service API mapping / Native 境界 / Permissions / Settings UI / Error / Lifecycle / Phase G・D 境界 / テスト方針 / Localization キー案。
 
@@ -450,6 +450,9 @@ Phase E の採用方式から **外す**。
 | 項目 | 状態 |
 |------|------|
 | Phase E 設計 | **Design Complete** |
-| Phase E 実装 | **Not Implemented** |
+| Phase E 実装 | **Implemented**（Native `9223c59` 等 + Settings wiring I-3B `c3155be`） |
+| Settings Presentation Mode | `systemRoutePickerCommand`（I-3B） |
+| 実機 Acceptance（Bluetooth / car Bluetooth 等） | **Pending**（[settings-shell.md](settings-shell.md) §19.5） |
+| Phase I-3 baseline | client `dccf48f` — 526 PASS |
 | Concrete Android route technology | **Selected** — `SystemOutputSwitcherDialogController` + `androidx.mediarouter:mediarouter:1.8.1`（実装開始時 stable 再確認） |
-| Android 実機 route picker 検証 | 実装 Phase で必須 |
+| Android 実機 route picker 検証 | **Pending Acceptance**（[settings-shell.md](settings-shell.md) §19.5） |

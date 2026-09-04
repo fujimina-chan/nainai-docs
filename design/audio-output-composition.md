@@ -12,7 +12,7 @@ Audio Output **Phase H** — Phase A〜G で確定した Audio Output 機能を 
 - [Preference 永続化（Phase G）](audio-output-persistence.md)
 - [Common Settings Concrete Persistence](settings-persistence.md)
 
-**client 参照:** `4109a13`（Composition 現状）— `NainaiApp` / `MediaKitPlaybackService` / `AudioOutputController` **Implemented**。`AndroidAudioOutputService` / `IOSAudioOutputService` / `AudioOutputPreferenceCoordinator` / `AudioOutputPreferenceRepository` **Not Implemented**。
+**client 参照:** `dccf48f` — Production Composition **Implemented**（Phase H `f280a11` + I-3B Settings wiring）。詳細結果: [settings-shell.md](settings-shell.md) §19。
 
 **本書のスコープ:** platform 別 object graph / lifecycle / startup・dispose ordering / command・state route / owner・borrower。**Settings Shell UI 設計は扱わない**（[settings-shell.md](settings-shell.md) は別レーン — §15 で Presentation 契約の整合方針のみ記載）。
 
@@ -20,7 +20,7 @@ Audio Output **Phase H** — Phase A〜G で確定した Audio Output 機能を 
 
 | Phase | 内容 | 状態 |
 |-------|------|------|
-| **H** | **Cross-platform Application Composition**（本書） | **Design Complete** / **Not Implemented** |
+| **H** | **Cross-platform Application Composition**（本書） | **Design Complete** / **Implemented**（`f280a11` + I-3B） |
 
 ## 2. Phase G 最終依存（維持）
 
@@ -601,7 +601,7 @@ Settings Section は `presentationMode` に応じて **必要な dependency の�
 | 項目 | 状態 |
 |------|------|
 | Phase H design | **Design Complete** |
-| Phase H implementation | **Not Implemented** |
+| Phase H implementation | **Implemented**（`f280a11`） |
 | Platform composition | **`AudioOutputPlatformComposition` — Service + Presentation Mode** |
 | Windows mode | `deviceList` |
 | Android mode | `systemRoutePickerCommand` |
@@ -611,4 +611,6 @@ Settings Section は `presentationMode` に応じて **必要な dependency の�
 | Repository | 単一 Concrete + capability skip |
 | Coordinator | App lifetime / `unawaited(initialize())` + internal error handling |
 | Dispose | Coordinator → Controllers → `MediaKitPlaybackService` **のみ** |
-| Settings Shell 整合 | **統合工程で別途** — merge 前 |
+| Settings Shell 整合 | **Implemented**（I-3B — [settings-shell.md](settings-shell.md) §19.2） |
+| Phase I-3 baseline | client `dccf48f` — 526 PASS |
+| 実機 Acceptance / iOS compile | **Pending**（[settings-shell.md](settings-shell.md) §19.5） |

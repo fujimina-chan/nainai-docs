@@ -21,7 +21,7 @@ Common Settings の **Launcher から Shell 内 Section まで** の Presentatio
 | 項目 | 内容 |
 |------|------|
 | スコープ | Settings Launcher / Settings Shell / Section Composition / Tooltip Presentation / open-close lifecycle |
-| 状態 | **Design Complete** / **Not Implemented** |
+| 状態 | **Design Complete** / **Implemented**（client `dccf48f` — Phase I-3 完了時点。§19） |
 | 含まない | `SettingsRepository` concrete 実装、Application Composition 具体 graph（Phase H）、Phase D fallback ロジック本体 |
 
 ### 1.1 既存確定要素の統合
@@ -634,16 +634,107 @@ Desktop Side Sheet / Mobile Route、open-close、Controller 再生成なし。
 
 `TooltipPolicy` + `NainaiTooltip`、Semantics 維持、Widget 直書き if なし。
 
-## 19. 状態
+## 19. 状態 / Phase I-3 Implementation Result
+
+### 19.1 状態まとめ（client `dccf48f`）
 
 | 項目 | 状態 |
 |------|------|
 | Settings Shell / Launcher Presentation | **Design Complete** |
-| Settings Shell 実装 | **Not Implemented** |
-| Settings Launcher 実装 | **Not Implemented**（配置 Design Complete — [settings.md](settings.md) §15） |
-| Common Settings Core | client `4109a13` **Implemented** |
-| Common Settings Persistence | **Design Complete** / Concrete **Selected** / **Not Implemented** |
-| Tooltip Policy / `NainaiTooltip` | **Not Implemented** |
+| Settings Shell 実装 | **Implemented**（`5e2e206` 以降。Adaptive Side Sheet / Mobile Route） |
+| Settings Launcher 実装 | **Implemented**（`Icons.settings_rounded`） |
+| Common Settings Core | `4109a13` **Implemented** |
+| Common Settings Persistence | **Implemented**（`f8dc189` — [settings-persistence.md](settings-persistence.md)） |
+| Tooltip Policy / `NainaiTooltip` | **Implemented**（I-3C — §19.3） |
+| Audio Output Section Production Wiring | **Implemented**（I-3B — §19.2） |
+| Settings Category Presentation | **Implemented**（I-3D — §19.4） |
+| Phase 2 automated baseline | client `dccf48f` — **526 tests PASS** / `flutter analyze` PASS / `analyze --no-pub` PASS / `git diff --check` PASS |
+
+**区別:** **Implemented** ≠ **実機 Acceptance 完了**。Pending Acceptance は §19.5。
+
+### 19.2 Phase I-3B — Audio Output Section Production Wiring
+
+Settings Shell 内 Current UI:
+
+```text
+Settings
+├ Display
+└ Audio
+   └ Audio Output
+```
+
+| Platform | Presentation Mode | 実装結果 |
+|----------|-------------------|----------|
+| **Windows** | `deviceList` | System Default + specific device list。state = `AudioOutputController`。explicit selection = `AudioOutputSelectionCommands` → `AudioOutputPreferenceCoordinator`。successful explicit selection 後のみ Preference 保存。`isSaving`  alone では controls disable **しない**。persistence failure で runtime route を fake rollback **しない**。Presentation → `AudioOutputService` 直接 inject **なし** |
+| **Android** | `systemRoutePickerCommand` | System Output Switcher。`supportsSystemRoutePicker == false` では Action 非表示。`SystemRoutePickerCommands` 経由。Coordinator / Preference persistence **非経由**。picker launch 成功 ≠ route 変更成功。route picker failure = runtime error。Native 基盤は既存 Phase E を利用 |
+| **iOS** | `embeddedSystemRoutePicker` | `IOSAudioRoutePickerView` → embedded `AVRoutePickerView`。programmatic picker command **なし**。`supportsSystemRoutePicker == false` と embedded mode は **両立**。Native VoiceOver を正。Flutter 側重複 Semantics **なし** |
+
+**Error boundaries（混在禁止）:**
+
+| 境界 | 所有者 |
+|------|--------|
+| Runtime | `AudioOutputController.state.error` |
+| Persistence | `AudioOutputPreferenceCoordinator.persistenceError` / `preferredDeviceUnavailable` / `writesSuppressed` |
+| Fallback notification | `AudioOutputNotificationHost`（Shell **外** / App-level） |
+
+**Known / Pending verification（iOS）:** Windows host のため **iOS native compile / `flutter build ios` は未検証**。コード配線は Implemented。実機・compile 検証は §19.5。
+
+### 19.3 Phase I-3C — Global Media Tooltip Policy Migration
+
+| 項目 | 結果 |
+|------|------|
+| 移行 | Media Presentation 上の既存 policy 非連動 Tooltip **9 件** → `NainaiTooltip` |
+| 対象概念 | Play/Pause / Stop / Repeat / Mute normal / Mute compact / Select another file / collapse / expand controls |
+| Media Presentation standalone raw `Tooltip` | **0 件** |
+| Volume Slider | Tooltip migration で **変更なし**（過去 AXTree 修正 **維持**） |
+
+**正式実装契約:**
+
+```text
+TooltipVisibility
+  ↓
+Tooltip(excludeFromSemantics: true)
+  ↓
+child
+```
+
+`showTooltips` ON/OFF は **visual visibility のみ**変更。Semantics **維持**。
+
+**Historical issue → fix:** 実機操作で `showTooltips == false` でも既存 Media controls の Tooltip が残ることを発見。原因は raw / `IconButton` Tooltip が `TooltipPolicy` 非連動だったこと。I-3C（client `2e3dc09`）で解消済み。
+
+### 19.4 Phase I-3D — Settings Category Presentation Alignment
+
+Current 正式 UI（空 Section 非表示）:
+
+```text
+Settings
+├ Display / 表示
+│  └ showTooltips / ツールチップを表示
+└ Audio / オーディオ
+   └ Audio Output / 音声出力
+```
+
+| 項目 | 結果 |
+|------|------|
+| Rename | `GeneralSettingsSection` → **`DisplaySettingsSection`**（`general_settings_section.dart` → `display_settings_section.dart`） |
+| 新規 | **`SettingsCategorySection`** — title / child / spacing のみ |
+| Future 非表示 | Playback / 再生、General / 一般（項目 0 件）。**General catch-all 禁止** |
+| Localization | `settingsDisplay` / `settingsAudio`（gen-l10n）。Future 予約 `settingsGeneral` |
+| Shell 契約 | Desktop end side sheet `min(480, viewportWidth × 0.40)` / Mobile full-screen Route — **不変** |
+
+**App lifetime ownership（I-3B〜D 通して維持）:** `SettingsController` / `AudioOutputController` / `AudioOutputPreferenceCoordinator` / `MediaController` / `MediaKitPlaybackService` / `Player` — Settings open/close や Category 変更で **再生成しない**。
+
+### 19.5 Pending Acceptance（Implemented ≠ 実機検証済み）
+
+Phase 2 final acceptance 候補（最低限）:
+
+| Platform | 項目 |
+|----------|------|
+| **Windows** | Settings Display / Audio、Tooltip ON/OFF、Audio device switch、fallback、save/restore |
+| **Android** | System Output Switcher、Bluetooth headphones / speakers、**car Bluetooth** media audio、Settings / Tooltip |
+| **iOS** | `AVRoutePickerView` 実機、Bluetooth / AirPods、**car Bluetooth**、Settings / Tooltip、**native build / compile verification**（Windows host 未検証） |
+
+Bluetooth（headphones / speakers / car Bluetooth media audio）は Phase 2 final acceptance 候補。特に iOS route picker は **実機確認必須**。
 
 ## 20. 参照一次資料（docs 内）
 
